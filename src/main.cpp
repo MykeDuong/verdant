@@ -1,11 +1,11 @@
 #include "optional.h"
-#include "version.h"
 #include "scanner.h"
-#include <status.h>
+#include "version.h"
 #include <iostream>
+#include <status.h>
 #include <string>
 
-bool loop(Scanner& scanner, std::string& statement) {
+bool loop(Scanner &scanner, std::string &statement) {
   std::cout << ">> ";
   if (!std::getline(std::cin, statement)) {
     return false;
@@ -16,15 +16,15 @@ bool loop(Scanner& scanner, std::string& statement) {
   }
 
   std::vector<std::string> tokens = scanner.parse(statement).unwrap();
-  
-  std:: cout << "["; 
-  for (auto token: tokens) {
+
+  std::cout << "[";
+  for (auto token : tokens) {
     if (token != *tokens.begin()) {
       std::cout << ", ";
     }
     std::cout << '"' << token << '"';
   }
-  std:: cout << "]" << std::endl; 
+  std::cout << "]" << std::endl;
   return true;
 }
 
@@ -34,11 +34,12 @@ int main() {
 
 #ifdef VERDANT_FLAG_DEBUG
   std::cout << "[Warning] Debug mode enabled." << std::endl;
-#endif 
+#endif
 
   Scanner scanner;
   std::string statement;
 
-  while (loop(scanner, statement)) {}
+  while (loop(scanner, statement)) {
+  }
   return VerdantStatus::SUCCESS;
 }

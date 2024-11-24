@@ -1,7 +1,6 @@
 #pragma once
 
-template <typename T>
-class Optional {
+template <typename T> class Optional {
 private:
   T value;
 
@@ -10,9 +9,8 @@ public:
 
   Optional();
   Optional(T value);
-  Optional(Optional&& optional);
+  Optional(Optional &&optional);
   T unwrap();
-
 };
 
 #include "optional.cpp"
