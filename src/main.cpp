@@ -1,11 +1,12 @@
 #include "optional.h"
 #include "version.h"
 #include "scanner.h"
-#include <status.h>
+#include "status.h"
+#include "parser.h"
 #include <iostream>
 #include <string>
 
-bool loop(Scanner& scanner, std::string& statement) {
+bool loop(Scanner& scanner, Parser& parser, std::string& statement) {
   std::cout << ">> ";
   if (!std::getline(std::cin, statement)) {
     return false;
@@ -15,11 +16,12 @@ bool loop(Scanner& scanner, std::string& statement) {
     return false;
   }
 
-  std::vector<std::string> tokens = scanner.parse(statement).unwrap();
+  std::vector<Token> tokens = scanner.scan(statement).unwrap();
+  Optional<AST> ast = parser.parse(tokens);
   
   std:: cout << "["; 
   for (auto token: tokens) {
-    if (token != *tokens.begin()) {
+    if (token.value != (*tokens.begin()).value) {
       std::cout << ", ";
     }
     std::cout << '"' << token << '"';
@@ -37,8 +39,9 @@ int main() {
 #endif 
 
   Scanner scanner;
+  Parser parser;
   std::string statement;
 
-  while (loop(scanner, statement)) {}
+  while (loop(scanner, parser, statement)) {}
   return VerdantStatus::SUCCESS;
 }

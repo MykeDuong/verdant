@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED, True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
-set(CXXFLAGS  "-Wall -Werror")
+set(CXXFLAGS  "-Wall -Werror -g")
 set(CMAKE_CXX_FLAGS "${CXXFLAGS}")
 
 include_directories(include)

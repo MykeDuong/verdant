@@ -2,7 +2,6 @@
 
 template <typename T>
 class Optional {
-private:
   T value;
 
 public:
@@ -11,6 +10,7 @@ public:
   Optional();
   Optional(T value);
   Optional(Optional&& optional);
+  void setValue(T&& value);
   T unwrap();
 
 };

@@ -23,6 +23,11 @@ Optional<T>::Optional(Optional&& optional) {
 }
 
 template <typename T>
+void Optional<T>::setValue(T&& value) {
+  this->value = std::move(value);
+}
+
+template <typename T>
 T Optional<T>::unwrap() {
   if (this->error != 0) {
 #ifdef VERDANT_FLAG_DEBUG
