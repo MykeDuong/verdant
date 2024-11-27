@@ -5,8 +5,8 @@
 #include "object_database.h"
 
 struct Visitor {
-  virtual void visit(const CreateStmt* stmt) = 0;
-  virtual void visit(const ObjectDatabase* stmt) = 0;
+  virtual void visit(const CreateStmt* node) = 0;
+  virtual void visit(const ObjectDatabase* node) = 0;
 };
 
 #endif

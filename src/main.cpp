@@ -1,3 +1,4 @@
+#include "ast_printer.h"
 #include "optional.h"
 #include "version.h"
 #include "scanner.h"
@@ -17,16 +18,14 @@ bool loop(Scanner& scanner, Parser& parser, std::string& statement) {
   }
 
   std::vector<Token> tokens = scanner.scan(statement).unwrap();
-  Optional<AST> ast = parser.parse(tokens);
+  Optional<AST> astOrError = parser.parse(tokens);
+  AST ast = astOrError.unwrap();
   
-  std:: cout << "["; 
-  for (auto token: tokens) {
-    if (token.value != (*tokens.begin()).value) {
-      std::cout << ", ";
-    }
-    std::cout << '"' << token << '"';
-  }
-  std:: cout << "]" << std::endl; 
+#ifdef VERDANT_FLAG_DEBUG
+  ASTPrinter printer("[Debug] ");
+  printer.print(ast);
+#endif
+
   return true;
 }
 

@@ -97,7 +97,7 @@ Optional<AST> Parser::parse(const std::vector<Token>& tokens) {
     }
   }
 
-  result.setValue(std::move(ast);
+  result.setValue(std::move(ast));
   result.error = 0;
   return result;
 }
