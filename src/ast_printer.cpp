@@ -13,7 +13,7 @@ void ASTPrinter::printLineStart() {
     std::cout << " ";
   }
   if (!this->isRoot) {
-    std::cout << "|--- ";
+    std::cout << "'--- ";
   }
 }
 

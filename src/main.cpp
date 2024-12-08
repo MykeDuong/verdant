@@ -1,9 +1,11 @@
 #include "ast_printer.h"
 #include "optional.h"
+#include "util.h"
 #include "version.h"
 #include "scanner.h"
 #include "status.h"
 #include "parser.h"
+#include <cstdlib>
 #include <iostream>
 #include <string>
 
@@ -22,7 +24,7 @@ bool loop(Scanner& scanner, Parser& parser, std::string& statement) {
   AST ast = astOrError.unwrap();
   
 #ifdef VERDANT_FLAG_DEBUG
-  ASTPrinter printer("[Debug] ");
+  ASTPrinter printer("[DEBUG] ");
   printer.print(ast);
 #endif
 
@@ -34,8 +36,13 @@ int main() {
             << VERDANT_VERSION_MINOR << std::endl;
 
 #ifdef VERDANT_FLAG_DEBUG
-  std::cout << "[Warning] Debug mode enabled." << std::endl;
+  std::cout << "[WARNING] Debug mode enabled." << std::endl;
 #endif 
+  std::string dataPath = "/etc/verdant/";
+  if (!Utility::createAbsoluteDirectory(dataPath)) {
+    std::cout << "[ERROR] Cannot create/access data directory at " << dataPath << std::endl;
+    exit(1);
+  }
 
   Scanner scanner;
   Parser parser;
