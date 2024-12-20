@@ -5,9 +5,12 @@
 #include "scanner.h"
 #include "status.h"
 #include "parser.h"
+#include "parameters.h"
 #include <cstdlib>
 #include <iostream>
 #include <string>
+
+size_t BLOCK_SIZE = 8192;
 
 bool loop(Scanner& scanner, Parser& parser, std::string& statement) {
   std::cout << ">> ";
