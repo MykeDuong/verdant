@@ -9,7 +9,7 @@ public:
 
   Optional();
   Optional(T value);
-  Optional(Optional& op) = delete;
+  Optional(const Optional& op) = delete;
   Optional(Optional&& optional);
   void setValue(T&& value);
   T unwrap();
