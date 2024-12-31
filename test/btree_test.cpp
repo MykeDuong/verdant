@@ -10,14 +10,14 @@ int main() {
 #ifdef VERDANT_FLAG_DEBUG
   std::cout << "[DEBUG] Debug enabled" << std::endl;
 #endif
-  BTree<int> btree;
+  BTree<long long> btree;
 
   std::random_device dev;
   std::mt19937 rng(dev());
-  std::uniform_int_distribution<int> uni(0, INT_MAX);
+  std::uniform_int_distribution<long long> uni(0, INT_MAX);
   std::cout << "[DEBUG] Start fuzzing" << std::endl;
 
-  for (size_t i = 0; i < 100000; i++) {
+  for (size_t i = 0; i < 1000000; i++) {
     int randomInt = uni(rng);
     btree.insert(randomInt);
     assert(btree.validate());

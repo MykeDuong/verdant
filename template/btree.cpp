@@ -1,8 +1,12 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#ifdef VERDANT_FLAG_DEBUG 
+#include <unordered_set>
+#endif
 
 #include "optional.h"
 #include "parameters.h"
@@ -57,6 +61,14 @@ template <typename T> bool BTree<T>::insert(T value) {
   newRoot->children.push_back(std::move(newNode));
   newRoot->values.push_back(newValue);
   this->root = std::move(newRoot);
+#ifdef VERDANT_FLAG_DEBUG
+  assert(this->root->children[0]->values[this->root->children[0]->values.size() - 1] < newValue);
+  assert(newValue <= this->root->children[1]->values[0]);
+  std::cout << "[DEBUG] Current root ID: " << this->root->index << std::endl;
+  std::cout << "[DEBUG] Old root ID: " << this->root->children[0]->index << std::endl;
+  std::cout << "[DEBUG] New node ID: " << this->root->children[1]->index << std::endl;
+  std::cout << "[DEBUG] BTree: Finished root replacement." << std::endl;
+#endif
   return true;
 }
 
@@ -71,9 +83,15 @@ template <typename T> Optional<T> BTree<T>::search(T& value) {
 }
 
 template <typename T> bool BTree<T>::validate() {
+#ifdef VERDANT_FLAG_DEBUG
+  std::cout << "[DEBUG] BTree Validation process started" << std::endl;
+#endif
   if (this->root == nullptr) {
     return true;
   }
+#ifdef VERDANT_FLAG_DEBUG
+  std::cout << "[DEBUG] BTree Node Validation process started" << std::endl;
+#endif
   return this->root->validate(true).first;
 }
 
@@ -95,6 +113,13 @@ template <typename T> double BTree<T>::getAverageKeyPerNode() {
   return (double)numberOfKeys / numberOfNodes;
 }
 
+
+// NOTE: BTreeNode section
+
+#ifdef VERDANT_FLAG_DEBUG
+template <typename T> size_t BTreeNode<T>::nextIndex = 0;
+#endif
+
 // B-Tree Node Anatomy
 // ptr -- key -- ptr -- key -- ... -- key -- ptr -- next_block_ptr
 // 2M + 1 ptr, 2M key, 1 next_block_ptr
@@ -104,6 +129,10 @@ template <typename T> BTreeNode<T>::BTreeNode(size_t order, BTreeNode<T>* parent
   this->order = order;
   this->next = nullptr;
   this->parent = parent;
+#ifdef VERDANT_FLAG_DEBUG
+  this->index = BTreeNode<T>::nextIndex;
+  BTreeNode<T>::nextIndex++;
+#endif
 //  this->children.reserve(2 * this->order + 1);
 //  this->values.reserve(2 * this->order);
 }
@@ -140,6 +169,9 @@ template <typename T> size_t BTreeNode<T>::insertIndexSearch(T& value) {
       right = mid;
     }
   }
+#ifdef VERDANT_FLAG_DEBUG
+  assert(this->values[right - 1] < value && value <= this->values[right]);
+#endif
   return right;
 }
 
@@ -219,7 +251,7 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
   /**
   auto prevChild = this->parent->getPrevChild(this);
   if (prevChild.error == 0) {
-    
+  - 
   }
 
   auto nextChild = this->parent->getNextChild(this);
@@ -229,6 +261,12 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
   **/
 
   // Node is full. Splitting. Assumming distinct elements
+#ifdef VERDANT_FLAG_DEBUG
+  std::cout << "[DEBUG] Node splitting begin" << std::endl;
+  std::unordered_set<T> s(this->values.begin(), this->values.end());
+  s.insert(value);
+  assert(s.size() == this->values.size() + 1);
+#endif
   std::unique_ptr<BTreeNode<T>> newNode(new BTreeNode<T>(this->order, this->parent));
   auto oldNext = this->next;
   this->next = newNode.get();
@@ -243,6 +281,18 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
   } else {
     median = this->values[this->order];
   }
+#ifdef VERDANT_FLAG_DEBUG
+  // Ensure that the median is chosen correctly
+  size_t lessThanMedian = std::count_if(this->values.begin(), this->values.end(), [median](T x){return x < median;});
+  size_t moreThanMedian = std::count_if(this->values.begin(), this->values.end(), [median](T x){return x > median;});
+  if (value < median) {
+    lessThanMedian++;
+  }
+  if (value > median) {
+    moreThanMedian++;
+  }
+  assert(lessThanMedian == moreThanMedian);
+#endif
   bool valueAdded = false;
   size_t valuesMoved = 0;
   size_t childrenMoved = 0;
@@ -250,32 +300,88 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
     if (this->values[i] < median) {
       continue;
     }
-    if (!this->isLeaf() && this->values[i] == median) {
-      newNode->children.push_back(std::move(this->children[i]));
-      childrenMoved++;
-      continue;
-    }
-    if (!valueAdded && ((value > median) || (value == median && this->isLeaf())) && this->values[i] > value) {
-      newNode->values.push_back(value);
+
+    if (!valueAdded && value >= median && this->values[i] > value) {
+      // Implicit: values[i] > median
+      if ((value > median) || (value == median && this->isLeaf())) {
+        newNode->values.push_back(value);
+      } 
       if (!this->isLeaf()) {
+#ifdef VERDANT_FLAG_DEBUG
+        std::cout << "[DEBUG] New child pointer added to the new node" << std::endl; 
+#endif
+        ptr->parent = newNode.get();
         newNode->children.push_back(std::move(ptr));
       }
       valueAdded = true;
     } 
+
+    // Onward: values[i] >= median
     if (!this->isLeaf()) {
-      newNode->children.push_back(std::move(this->children[i]));
+      // if values[i] == median -> not add value, and only add the right child
+      this->children[i + 1]->parent = newNode.get();
+      newNode->children.push_back(std::move(this->children[i + 1]));
       childrenMoved++;
     }
-    newNode.get()->values.push_back(this->values[i]);
-    valuesMoved++;
-  }
-  if (!valueAdded && value < median) {
-    this->values.insert(this->values.begin() + insertIndex, value);
+
+    // this->isLeaf() -> add all, including median
+    // non-leaf -> add only if values[i] is not median
+    // values[i] added <-> isLeaf() or values[i] > median
+    if (this->isLeaf() || this->values[i] > median) {
+      newNode->values.push_back(this->values[i]);
+      valuesMoved++;
+    }
   }
   this->values.resize(this->values.size() - valuesMoved);
+#ifdef VERDANT_FLAG_DEBUG
+  size_t numChildrenOld = this->children.size();
+//if (!this->isLeaf()) {
+//  std::cout << "[DEBUG] Number of children before the move: " << this->children.size() << std::endl;
+//}
+#endif
   if (!this->isLeaf()) {
     this->children.resize(this->children.size() - childrenMoved);
   }
+#ifdef VERDANT_FLAG_DEBUG
+  if (!this->isLeaf()) {
+//  std::cout << "[DEBUG] New node children: " << newNode->children.size() << std::endl;
+//  std::cout << "[DEBUG] Current node children: " << this->children.size() << std::endl;
+//  std::cout << "[DEBUG] Number of children moved: " << childrenMoved << std::endl;
+//  std::cout << "[DEBUG] Ptr moved: " << (valueAdded ? "true" : "false") << std::endl;
+    assert(childrenMoved == newNode->children.size() - (valueAdded ? 1 : 0));
+    assert(this->children.size() + newNode->children.size() + (valueAdded ? -1 : 0) == numChildrenOld);
+  }
+#endif
+  if (!valueAdded && value < median) {
+    this->values.insert(this->values.begin() + insertIndex, value);
+    if (!this->isLeaf()) {
+#ifdef VERDANT_FLAG_DEBUG
+      assert(insertIndex + 1 <= this->children.size());
+      assert(this->children[this->children.size() - 1] != nullptr);
+#endif
+      ptr->parent = this;
+      this->children.insert(this->children.begin() + insertIndex + 1, std::move(ptr));
+#ifdef VERDANT_FLAG_DEBUG
+      std::cout << "[DEBUG] New child pointer added to the splitted node at index " << insertIndex + 1 << std::endl; 
+      assert(this->children[this->children.size() - 1] != nullptr);
+#endif
+    }
+  }
+  if (!this->isLeaf() && this->values[this->values.size() - 1] == median) {
+    this->values.pop_back();
+  }
+#ifdef VERDANT_FLAG_DEBUG
+//std::cout << "[DEBUG] Last value of splitted node: " << this->values[this->values.size() - 1] << std::endl; 
+//std::cout << "[DEBUG] Upvalue: " << median << std::endl; 
+//std::cout << "[DEBUG] First value of new sibling: " << newNode->values[0] << std::endl; 
+//std::cout << "[DEBUG] Splitted node ID: " << this->index  << std::endl;
+//std::cout << "[DEBUG] Parent ID: " << (this->parent != nullptr ? std::to_string(this->parent->index) : "null") << std::endl;
+//std::cout << "[DEBUG] New node ID: " << newNode->index << std::endl;
+  assert(this->parent == newNode->parent);
+  assert(this->values[this->values.size() - 1] < median);
+  assert(median <= newNode->values[0]);
+  std::cout << "[DEBUG] Node splitting finished" << std::endl;
+#endif
   return std::make_pair(Optional<T>(median), std::move(newNode));
 }
 
@@ -290,7 +396,6 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
 template <typename T> bool BTreeNode<T>::remove(T& value) {
   return true;
 }
-
 
 template <typename T> Optional<T> BTreeNode<T>::search(T& value) {
   if (this->values.size() == 0) {
@@ -310,7 +415,14 @@ template <typename T> Optional<T> BTreeNode<T>::search(T& value) {
   }
 }
 
-template <typename T> std::pair<bool, size_t> BTreeNode<T>::validate(bool root, T* minVal, T* maxVal) {
+template <typename T> std::pair<bool, size_t> BTreeNode<T>::validate(bool root, BTreeNode* parent, T* minVal, T* maxVal) {
+  // NOTE: Verify that the parent information is correct
+  if (this->parent != parent) {
+#ifdef VERDANT_FLAG_DEBUG
+    std::cout << "[ERROR] Mismatching parent pointers." << std::endl;
+#endif
+    return { false, SIZE_MAX };
+  }
   // NOTE: Rule 1: Each node contains at most 2M key
   if (this->values.size() > 2 * this->order) {
 #ifdef VERDANT_FLAG_DEBUG
@@ -328,21 +440,28 @@ template <typename T> std::pair<bool, size_t> BTreeNode<T>::validate(bool root, 
   }
 
   if (this->values.size() > 0) {
-    // Check that the first key is larger or equal to minVal, and the last key is less than maxVal
+    // Check that the first key is larger or equal to minVal 
     if (minVal != nullptr && this->values[0] < *minVal) {
 #ifdef VERDANT_FLAG_DEBUG
       std::cout << "[ERROR] BTree failed by having first key of a node less than previous key of its parent node." << std::endl;
+      std::cout << "[DEBUG] Current node ID: " << this->index << std::endl;
+      std::cout << "[DEBUG] Parent ID: " << this->parent->index << std::endl;
 #endif
       return { false, SIZE_MAX };
     }
 
+    // Check that the last key is less than maxVal
     if (maxVal != nullptr && this->values[this->values.size() - 1] >= *maxVal) {
 #ifdef VERDANT_FLAG_DEBUG
       std::cout << "[ERROR] BTree failed by having last key of a node larger than or equal to previous key of its parent node." << std::endl;
+      std::cout << "[DEBUG] Current node ID: " << this->index << std::endl;
+      std::cout << "[DEBUG] Parent ID: " << this->parent->index << std::endl;
+      std::cout << "[DEBUG] Last value: " << this->values[this->values.size() - 1] << std::endl;
+      std::cout << "[DEBUG] Right-parent value: " << *maxVal << std::endl;
 #endif
       return { false, SIZE_MAX };
     }
-    
+
     // Check that the keys are in ascending order
     for (size_t i = 0; i < this->values.size() - 1; i++) {
       if (this->values[i] > this->values[i + 1]) {
@@ -355,50 +474,51 @@ template <typename T> std::pair<bool, size_t> BTreeNode<T>::validate(bool root, 
     }
   }
 
-
-  size_t childDepth = 0;
-  size_t numChild = 0;
-
-  for (size_t i = 0; i < this->children.size(); i++) {
-    if (this->children[i] != nullptr) {
-      numChild += 1;
-      std::pair<bool, size_t> childResult = this->children[i]->validate(false, i == 0 ? nullptr : &this->values[i - 1], i == this->children.size() - 1 ? nullptr : &this->values[i]);
-      if (childResult.first == false) {
-        return { false, SIZE_MAX };
-      }
-      if (childDepth == 0) {
-        childDepth = childResult.second;
-      // NOTE: Rule 4: All leaf nodes are at the same depth (balanced)
-      } else if (childDepth != childResult.second) {
-#ifdef VERDANT_FLAG_DEBUG
-    std::cout << "[ERROR] BTree is not balanced" << std::endl;
-#endif
-        return { false, SIZE_MAX };
-      }
-    }
-  }
-  
-  if (numChild == 0) {
-    // Leaf node
-    return { true, 0 };
-  } else {
-    // Internal node
-    // NOTE: Rule 3: All non-leaf node have at least 2 children
-    if (numChild < 2) {
+  // NOTE: Rule 3: All non-leaf node have at least 2 children
+  if (!this->isLeaf() && this->children.size() < 2) {
 #ifdef VERDANT_FLAG_DEBUG
     std::cout << "[ERROR] Non-leaf node has less than 2 children" << std::endl;
 #endif
+    return { false, SIZE_MAX };
+  }
+
+  size_t childDepth = 0;
+  for (size_t i = 0; i < this->children.size(); i++) {
+    if (this->children[i] == nullptr) {
+#ifdef VERDANT_FLAG_DEBUG
+      std::cout << "[ERROR] Null node detected at node ID " << this->index << std::endl;
+      std::cout << "[DEBUG] Number of values: " << this->values.size() << std::endl;
+      std::cout << "[DEBUG] Number of children: " << this->children.size() << std::endl;
+      std::cout << "[DEBUG] Null child index: " << i << std::endl;
+      exit(1);
+#endif
+    }
+    std::pair<bool, size_t> childResult = this->children[i]->validate(false, this, (i == 0 ? nullptr : &this->values[i - 1]), (i == this->children.size() - 1 ? nullptr : &this->values[i]));
+    if (childResult.first == false) {
       return { false, SIZE_MAX };
     }
-    // NOTE: Rule 5: A non-leaf node with n keys has exactly n + 1 children
-    if (numChild != this->values.size() + 1) {
+    if (childDepth == 0) {
+      childDepth = childResult.second;
+    // NOTE: Rule 4: All leaf nodes are at the same depth (balanced)
+    } else if (childDepth != childResult.second) {
 #ifdef VERDANT_FLAG_DEBUG
-    std::cout << "[ERROR] Mismatched keys-children values" << std::endl;
+  std::cout << "[ERROR] BTree is not balanced" << std::endl;
 #endif
       return { false, SIZE_MAX };
     }
-    return { true, 0 };
   }
+
+  // NOTE: Rule 5: A non-leaf node with n keys has exactly n + 1 children
+  if (!this->isLeaf() && this->children.size() != this->values.size() + 1) {
+#ifdef VERDANT_FLAG_DEBUG
+    std::cout << "[ERROR] Mismatched keys-children values" << std::endl;
+    std::cout << "[DEBUG] Number of keys: " << this->values.size() << std::endl;
+    std::cout << "[DEBUG] Number of children: " << this->children.size() << std::endl;
+#endif
+    return { false, SIZE_MAX };
+  }
+
+  return { true, 0 };
 }
 
 template <typename T> size_t BTreeNode<T>::getHeight() {

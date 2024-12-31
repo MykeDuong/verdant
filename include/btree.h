@@ -16,6 +16,11 @@ private:
   std::vector<T> values;
   BTreeNode* parent;
   friend class BTree<T>;
+#ifdef VERDANT_FLAG_DEBUG
+  static size_t nextIndex;
+  size_t index;
+
+#endif
 
   size_t insertIndexSearch(T& value);
 
@@ -33,7 +38,7 @@ private:
 
   Optional<T> search(T& value);
 
-  std::pair<bool, size_t> validate(bool root = false, T* maxVal = nullptr, T* minVal = nullptr);
+  std::pair<bool, size_t> validate(bool root = false, BTreeNode* parent = nullptr, T* minVal = nullptr, T* maxVal = nullptr);
 
   size_t getHeight();
   
