@@ -19,12 +19,17 @@ private:
 #ifdef VERDANT_FLAG_DEBUG
   static size_t nextIndex;
   size_t index;
-
 #endif
 
-  size_t insertIndexSearch(T& value);
+  size_t insertIndexSearch(const T& value);
 
   bool isLeaf();
+
+  bool isRoot();
+
+  bool isFull();
+
+  size_t findChildIndex(BTreeNode<T>* child);
 
   Optional<BTreeNode<T>*> getPrevChild(BTreeNode* curChild);
 
@@ -36,9 +41,15 @@ private:
 
   bool remove(T& value);
 
-  Optional<T> search(T& value);
+  Optional<T> search(const T& value);
+
+  Optional<std::vector<T>> searchRange(const T& minVal, const T& maxVal);
 
   std::pair<bool, size_t> validate(bool root = false, BTreeNode* parent = nullptr, T* minVal = nullptr, T* maxVal = nullptr);
+
+  Optional<T> getMinValue();
+
+  Optional<T> getMaxValue();
 
   size_t getHeight();
   
@@ -60,9 +71,15 @@ public:
 
   bool remove(T& value);
 
-  Optional<T> search(T& value);
+  Optional<T> search(const T& value);
+
+  Optional<std::vector<T>> searchRange(const T& minVal, const T& maxVal);
 
   bool validate();
+
+  Optional<T> getMinValue();
+
+  Optional<T> getMaxValue();
 
   size_t getHeight();
 

@@ -77,9 +77,17 @@ template <typename T> bool BTree<T>::remove(T& value) {
   return result;
 }
 
-template <typename T> Optional<T> BTree<T>::search(T& value) {
-  bool result = this->root->remove(value);
+template <typename T> Optional<T> BTree<T>::search(const T& value) {
+  auto result = this->root->search(value);
   return result;
+}
+
+template <typename T>  Optional<std::vector<T>> BTree<T>::searchRange(const T& minVal, const T& maxVal) {
+  if (this->root == nullptr) {
+    return Optional<std::vector<T>>();
+  }
+
+  return this->root->searchRange(minVal, maxVal);
 }
 
 template <typename T> bool BTree<T>::validate() {
@@ -95,10 +103,21 @@ template <typename T> bool BTree<T>::validate() {
   return this->root->validate(true).first;
 }
 
+template <typename T> Optional<T> BTree<T>::getMinValue() {
+  if (this->root == nullptr) {
+    return Optional<T>();
+  }
+  return this->root->getMinValue();
+}
+
+template <typename T> Optional<T> BTree<T>::getMaxValue() {
+  if (this->root == nullptr) {
+    return Optional<T>();
+  }
+  return this->root->getMaxValue();
+}
+
 template <typename T> size_t BTree<T>::getHeight() {
-#ifdef VERDANT_FLAG_DEBUG
-  assert(this->validate());
-#endif
   return this->root->getHeight();
 }
 
@@ -137,7 +156,7 @@ template <typename T> BTreeNode<T>::BTreeNode(size_t order, BTreeNode<T>* parent
 //  this->values.reserve(2 * this->order);
 }
 
-template <typename T> size_t BTreeNode<T>::insertIndexSearch(T& value) {
+template <typename T> size_t BTreeNode<T>::insertIndexSearch(const T& value) {
   // Find the location to insert the value
   // Empty node
   if (this->values.size() == 0) {
@@ -177,6 +196,27 @@ template <typename T> size_t BTreeNode<T>::insertIndexSearch(T& value) {
 
 template <typename T> bool BTreeNode<T>::isLeaf() {
   return this->children.size() == 0;
+}
+template <typename T> bool BTreeNode<T>::isRoot() {
+  return this->parent == nullptr;
+}
+
+template <typename T> bool BTreeNode<T>::isFull() {
+  assert(this->values.size() <= 2 * this->order);
+  return this->values.size() == 2 * this->order;
+}
+
+template <typename T> size_t BTreeNode<T>::findChildIndex(BTreeNode<T>* child) {
+  for (size_t i = 0; i < this->children.size(); i++) {
+    if (this->children[i].get() == child) {
+      return i;
+    }
+  }
+#ifdef VERDANT_FLAG_DEBUG
+  std::cout << "[ERROR] Child index not found in a BTree Node" << std::endl;
+  exit(VerdantStatus::INTERNAL_ERROR);
+#endif
+
 }
 
 template <typename T> Optional<BTreeNode<T>*> BTreeNode<T>::getPrevChild(BTreeNode* curChild) {
@@ -233,7 +273,7 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
   insertIndex = this->insertIndexSearch(value);
   assert(this->isLeaf() || insertIndex == this->values.size() || this->values[insertIndex] != value);
 
-  if (this->values.size() < 2 * this->order || (insertIndex < this->values.size() && this->values[insertIndex] == value)) {
+  if (!this->isFull() || (insertIndex < this->values.size() && this->values[insertIndex] == value)) {
     if (insertIndex < this->values.size() && this->values[insertIndex] == value) {
       this->values[insertIndex] = value;
       assert(this->isLeaf() && ptr == nullptr);
@@ -244,21 +284,63 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
         this->children.insert(this->children.begin() + insertIndex + 1, std::move(ptr));
       }
     }
-    return std::make_pair(Optional<T>(), nullptr);
+    return { Optional<T>(), nullptr };
   }
 
-  // TODO: Borrow space from prev and next siblings
-  /**
-  auto prevChild = this->parent->getPrevChild(this);
-  if (prevChild.error == 0) {
-  - 
+  if (!this->isRoot() && !this->isLeaf()) {
+    // Borrow space from previous sibling
+    auto optionalPrevSibling = this->parent->getPrevChild(this);
+    if (optionalPrevSibling.error == 0 && !optionalPrevSibling.unwrap()->isFull()) {
+#ifdef VERDANT_FLAG_DEBUG
+      std::cout << "[DEBUG] Borrow from previous sibling" << std::endl;
+#endif
+      auto prevSibling = optionalPrevSibling.unwrap();
+      size_t middleIndex = this->parent->findChildIndex(this) - 1;
+      prevSibling->values.push_back(this->parent->values[middleIndex]);
+      this->children[0]->parent = prevSibling;
+      prevSibling->children.push_back(std::move(this->children[0]));
+      this->children.erase(this->children.begin());
+      if (insertIndex == 0) {
+        this->parent->values[middleIndex] = value;
+        ptr->parent = this;
+        this->children.insert(this->children.begin(), std::move(ptr));
+      } else {
+        this->parent->values[middleIndex] = this->values[0];
+        this->values.erase(this->values.begin());
+        this->values.insert(this->values.begin() + insertIndex - 1, value);
+        ptr->parent = this;
+        this->children.insert(this->children.begin() + insertIndex, std::move(ptr));
+      }
+      return std::make_pair(Optional<T>(), nullptr);
+    }
+  
+    // Borrow space from next sibling 
+    auto optionalNextSibling = this->parent->getNextChild(this);
+    if (optionalNextSibling.error == 0 && !optionalNextSibling.unwrap()->isFull()) {
+#ifdef VERDANT_FLAG_DEBUG
+      std::cout << "[DEBUG] Borrow from next sibling" << std::endl;
+#endif
+      auto nextSibling = optionalNextSibling.unwrap();
+      size_t middleIndex = this->parent->findChildIndex(this);
+      nextSibling->values.insert(nextSibling->values.begin(), this->parent->values[middleIndex]);
+      if (insertIndex == this->values.size()) {
+        this->parent->values[middleIndex] = value;
+        ptr->parent = nextSibling;
+        nextSibling->children.insert(nextSibling->children.begin(), std::move(ptr));
+      } else {
+        this->parent->values[middleIndex] = this->values[this->values.size() - 1];
+        this->values.pop_back();
+        this->values.insert(this->values.begin() + insertIndex, value);
+        this->children[this->children.size() - 1]->parent = nextSibling;
+        nextSibling->children.insert(nextSibling->children.begin(), std::move(this->children[this->children.size() - 1]));
+        this->children.pop_back();
+        ptr->parent = this;
+        this->children.insert(this->children.begin() + insertIndex + 1, std::move(ptr));
+      }
+  
+      return std::make_pair(Optional<T>(), nullptr);
+    }
   }
-
-  auto nextChild = this->parent->getNextChild(this);
-  if (nextChild.error == 0) {
-    
-  }
-  **/
 
   // Node is full. Splitting. Assumming distinct elements
 #ifdef VERDANT_FLAG_DEBUG
@@ -332,39 +414,42 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
       valuesMoved++;
     }
   }
+
+  // Handle when value more than max of values
+  if (value > this->values[this->values.size() - 1]) {
+    if ((value > median) || (value == median && this->isLeaf())) {
+      newNode->values.push_back(value);
+    } 
+    if (!this->isLeaf()) {
+#ifdef VERDANT_FLAG_DEBUG
+      std::cout << "[DEBUG] New child pointer added to the new node" << std::endl; 
+#endif
+      ptr->parent = newNode.get();
+      newNode->children.push_back(std::move(ptr));
+    }
+    valueAdded = true;
+  }
+
   this->values.resize(this->values.size() - valuesMoved);
 #ifdef VERDANT_FLAG_DEBUG
   size_t numChildrenOld = this->children.size();
-//if (!this->isLeaf()) {
-//  std::cout << "[DEBUG] Number of children before the move: " << this->children.size() << std::endl;
-//}
 #endif
   if (!this->isLeaf()) {
     this->children.resize(this->children.size() - childrenMoved);
   }
 #ifdef VERDANT_FLAG_DEBUG
   if (!this->isLeaf()) {
-//  std::cout << "[DEBUG] New node children: " << newNode->children.size() << std::endl;
-//  std::cout << "[DEBUG] Current node children: " << this->children.size() << std::endl;
-//  std::cout << "[DEBUG] Number of children moved: " << childrenMoved << std::endl;
-//  std::cout << "[DEBUG] Ptr moved: " << (valueAdded ? "true" : "false") << std::endl;
     assert(childrenMoved == newNode->children.size() - (valueAdded ? 1 : 0));
     assert(this->children.size() + newNode->children.size() + (valueAdded ? -1 : 0) == numChildrenOld);
   }
 #endif
-  if (!valueAdded && value < median) {
+  if (!valueAdded) {
+    assert(value < median);
     this->values.insert(this->values.begin() + insertIndex, value);
+    valueAdded = true;
     if (!this->isLeaf()) {
-#ifdef VERDANT_FLAG_DEBUG
-      assert(insertIndex + 1 <= this->children.size());
-      assert(this->children[this->children.size() - 1] != nullptr);
-#endif
       ptr->parent = this;
       this->children.insert(this->children.begin() + insertIndex + 1, std::move(ptr));
-#ifdef VERDANT_FLAG_DEBUG
-      std::cout << "[DEBUG] New child pointer added to the splitted node at index " << insertIndex + 1 << std::endl; 
-      assert(this->children[this->children.size() - 1] != nullptr);
-#endif
     }
   }
   if (!this->isLeaf() && this->values[this->values.size() - 1] == median) {
@@ -377,6 +462,7 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
 //std::cout << "[DEBUG] Splitted node ID: " << this->index  << std::endl;
 //std::cout << "[DEBUG] Parent ID: " << (this->parent != nullptr ? std::to_string(this->parent->index) : "null") << std::endl;
 //std::cout << "[DEBUG] New node ID: " << newNode->index << std::endl;
+  assert(valueAdded);
   assert(this->parent == newNode->parent);
   assert(this->values[this->values.size() - 1] < median);
   assert(median <= newNode->values[0]);
@@ -397,21 +483,55 @@ template <typename T> bool BTreeNode<T>::remove(T& value) {
   return true;
 }
 
-template <typename T> Optional<T> BTreeNode<T>::search(T& value) {
+template <typename T> Optional<T> BTreeNode<T>::search(const T& value) {
   if (this->values.size() == 0) {
     return Optional<T>();
   }
 
   size_t insertIndex = this->insertIndexSearch(value);
 
-  if (insertIndex != this->values.size() || this->values[insertIndex] == value) {
-    return this->values[insertIndex];
+  if (insertIndex != this->values.size() && this->values[insertIndex] == value) {
+    if (this->isLeaf()) {
+      return this->values[insertIndex];
+    }
+    return this->children[insertIndex + 1]->search(value);
   } else {
-    // Assert that the search works as expected
+    if (this->isLeaf()) {
+      return Optional<T>();
+    }
+#ifdef VERDANT_FLAG_DEBUG
     assert(insertIndex == this->values.size() || this->values[insertIndex] > value);
-    assert(insertIndex == 0 || *this->values[insertIndex - 1] < value);
+    assert(insertIndex == 0 || this->values[insertIndex - 1] < value);
+#endif
 
     return this->children[insertIndex]->search(value);
+  }
+}
+
+template <typename T>  Optional<std::vector<T>> BTreeNode<T>::searchRange(const T& minVal, const T& maxVal) {
+  size_t insertIndex = this->insertIndexSearch(minVal);
+  if (this->isLeaf()) {
+    std::vector<T> rangeResult;
+    BTreeNode<T>* curNode = this;
+    size_t curIndex = insertIndex;
+    while (curNode != nullptr) {
+      if (curIndex == curNode->values.size()) {
+        curIndex = 0;
+        curNode = curNode->next;
+        continue;
+      }
+      if (curNode->values[curIndex] > maxVal) {
+        break;
+      }
+      rangeResult.push_back(curNode->values[curIndex]);
+      curIndex++;
+    }
+    return rangeResult;
+  }
+  if (insertIndex != this->values.size() && this->values[insertIndex] == minVal) {
+    return this->children[insertIndex + 1]->searchRange(minVal, maxVal);
+  } else {
+    return this->children[insertIndex]->searchRange(minVal, maxVal);
   }
 }
 
@@ -519,6 +639,21 @@ template <typename T> std::pair<bool, size_t> BTreeNode<T>::validate(bool root, 
   }
 
   return { true, 0 };
+}
+
+
+template <typename T> Optional<T> BTreeNode<T>::getMinValue() {
+  if (this->isLeaf()) {
+    return this->values[0];
+  }
+  return this->children[0]->getMinValue();
+}
+
+template <typename T> Optional<T> BTreeNode<T>::getMaxValue() {
+  if (this->isLeaf()) {
+    return this->values[this->values.size() - 1];
+  }
+  return this->children[this->children.size() - 1]->getMaxValue();
 }
 
 template <typename T> size_t BTreeNode<T>::getHeight() {
