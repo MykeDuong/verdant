@@ -29,6 +29,8 @@ private:
 
   bool isFull();
 
+  bool isLeast();
+
   size_t findChildIndex(BTreeNode<T>* child);
 
   Optional<BTreeNode<T>*> getPrevChild(BTreeNode* curChild);
@@ -39,7 +41,11 @@ private:
 
   BTreeNode(size_t order, BTreeNode* parent = nullptr);
 
-  bool remove(T& value);
+  std::pair<Optional<T>, Optional<size_t>> remove(const T& value);
+
+  std::pair<Optional<T>, Optional<size_t>> removeOnLeaf(const T& value);
+
+  std::pair<Optional<T>, Optional<size_t>> removeOnInternal(const T& value);
 
   Optional<T> search(const T& value);
 
@@ -57,6 +63,10 @@ private:
 
   size_t countKeys();
 
+  static void mergeLeafNodes(BTreeNode<T>* first, BTreeNode<T>* second);
+
+  static void mergeInternalNodes(BTreeNode<T>* first, const T middleValue, BTreeNode<T>* second);
+
 };
 
 template <typename T> class BTree {
@@ -69,7 +79,7 @@ public:
 
   bool insert(T value);
 
-  bool remove(T& value);
+  Optional<T> remove(const T& value);
 
   Optional<T> search(const T& value);
 
