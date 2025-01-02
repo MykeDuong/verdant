@@ -287,58 +287,97 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
     return { Optional<T>(), nullptr };
   }
 
-  if (!this->isRoot() && !this->isLeaf()) {
-    // Borrow space from previous sibling
-    auto optionalPrevSibling = this->parent->getPrevChild(this);
-    if (optionalPrevSibling.error == 0 && !optionalPrevSibling.unwrap()->isFull()) {
+  if (!this->isRoot()) {
+    if (!this->isLeaf()) {
+      // Borrow space from previous sibling
+      auto optionalPrevSibling = this->parent->getPrevChild(this);
+      if (optionalPrevSibling.error == 0 && !optionalPrevSibling.unwrap()->isFull()) {
 #ifdef VERDANT_FLAG_DEBUG
-      std::cout << "[DEBUG] Borrow from previous sibling" << std::endl;
+        std::cout << "[DEBUG] Borrow from previous sibling" << std::endl;
 #endif
-      auto prevSibling = optionalPrevSibling.unwrap();
-      size_t middleIndex = this->parent->findChildIndex(this) - 1;
-      prevSibling->values.push_back(this->parent->values[middleIndex]);
-      this->children[0]->parent = prevSibling;
-      prevSibling->children.push_back(std::move(this->children[0]));
-      this->children.erase(this->children.begin());
-      if (insertIndex == 0) {
-        this->parent->values[middleIndex] = value;
-        ptr->parent = this;
-        this->children.insert(this->children.begin(), std::move(ptr));
-      } else {
-        this->parent->values[middleIndex] = this->values[0];
-        this->values.erase(this->values.begin());
-        this->values.insert(this->values.begin() + insertIndex - 1, value);
-        ptr->parent = this;
-        this->children.insert(this->children.begin() + insertIndex, std::move(ptr));
+        auto prevSibling = optionalPrevSibling.unwrap();
+        size_t middleIndex = this->parent->findChildIndex(this) - 1;
+        prevSibling->values.push_back(this->parent->values[middleIndex]);
+        this->children[0]->parent = prevSibling;
+        prevSibling->children.push_back(std::move(this->children[0]));
+        this->children.erase(this->children.begin());
+        if (insertIndex == 0) {
+          this->parent->values[middleIndex] = value;
+          ptr->parent = this;
+          this->children.insert(this->children.begin(), std::move(ptr));
+        } else {
+          this->parent->values[middleIndex] = this->values[0];
+          this->values.erase(this->values.begin());
+          this->values.insert(this->values.begin() + insertIndex - 1, value);
+          ptr->parent = this;
+          this->children.insert(this->children.begin() + insertIndex, std::move(ptr));
+        }
+        return std::make_pair(Optional<T>(), nullptr);
       }
-      return std::make_pair(Optional<T>(), nullptr);
-    }
-  
-    // Borrow space from next sibling 
-    auto optionalNextSibling = this->parent->getNextChild(this);
-    if (optionalNextSibling.error == 0 && !optionalNextSibling.unwrap()->isFull()) {
+    
+      // Borrow space from next sibling 
+      auto optionalNextSibling = this->parent->getNextChild(this);
+      if (optionalNextSibling.error == 0 && !optionalNextSibling.unwrap()->isFull()) {
 #ifdef VERDANT_FLAG_DEBUG
-      std::cout << "[DEBUG] Borrow from next sibling" << std::endl;
+        std::cout << "[DEBUG] Borrow from next sibling" << std::endl;
 #endif
-      auto nextSibling = optionalNextSibling.unwrap();
-      size_t middleIndex = this->parent->findChildIndex(this);
-      nextSibling->values.insert(nextSibling->values.begin(), this->parent->values[middleIndex]);
-      if (insertIndex == this->values.size()) {
-        this->parent->values[middleIndex] = value;
-        ptr->parent = nextSibling;
-        nextSibling->children.insert(nextSibling->children.begin(), std::move(ptr));
-      } else {
-        this->parent->values[middleIndex] = this->values[this->values.size() - 1];
-        this->values.pop_back();
-        this->values.insert(this->values.begin() + insertIndex, value);
-        this->children[this->children.size() - 1]->parent = nextSibling;
-        nextSibling->children.insert(nextSibling->children.begin(), std::move(this->children[this->children.size() - 1]));
-        this->children.pop_back();
-        ptr->parent = this;
-        this->children.insert(this->children.begin() + insertIndex + 1, std::move(ptr));
+        auto nextSibling = optionalNextSibling.unwrap();
+        size_t middleIndex = this->parent->findChildIndex(this);
+        nextSibling->values.insert(nextSibling->values.begin(), this->parent->values[middleIndex]);
+        if (insertIndex == this->values.size()) {
+          this->parent->values[middleIndex] = value;
+          ptr->parent = nextSibling;
+          nextSibling->children.insert(nextSibling->children.begin(), std::move(ptr));
+        } else {
+          this->parent->values[middleIndex] = this->values[this->values.size() - 1];
+          this->values.pop_back();
+          this->values.insert(this->values.begin() + insertIndex, value);
+          this->children[this->children.size() - 1]->parent = nextSibling;
+          nextSibling->children.insert(nextSibling->children.begin(), std::move(this->children[this->children.size() - 1]));
+          this->children.pop_back();
+          ptr->parent = this;
+          this->children.insert(this->children.begin() + insertIndex + 1, std::move(ptr));
+        }
+    
+        return std::make_pair(Optional<T>(), nullptr);
       }
-  
-      return std::make_pair(Optional<T>(), nullptr);
+    } else { // this->isLeaf()
+      assert(ptr == nullptr);
+      // Borrow space from previous sibling
+      auto optionalPrevSibling = this->parent->getPrevChild(this);
+      if (optionalPrevSibling.error == 0 && !optionalPrevSibling.unwrap()->isFull()) {
+        auto prevSibling = optionalPrevSibling.unwrap();
+        size_t middleIndex = this->parent->findChildIndex(this) - 1;
+        assert(!(this->values[0] == this->parent->values[middleIndex]) || !(insertIndex == 0));
+        if (insertIndex == 0) {
+          prevSibling->values.push_back(value);
+          this->parent->values[middleIndex] = this->values[0];
+        } else { // insertIndex != 0
+          prevSibling->values.push_back(this->values[0]);
+          this->values.erase(this->values.begin());
+          this->values.insert(this->values.begin() + insertIndex - 1, value);
+          this->parent->values[middleIndex] = this->values[0];
+        }
+        return std::make_pair(Optional<T>(), nullptr);
+      }
+    
+      // Borrow space from next sibling 
+      auto optionalNextSibling = this->parent->getNextChild(this);
+      if (optionalNextSibling.error == 0 && !optionalNextSibling.unwrap()->isFull()) {
+        auto nextSibling = optionalNextSibling.unwrap();
+        size_t middleIndex = this->parent->findChildIndex(this);
+        if (insertIndex == this->values.size()) {
+          nextSibling->values.insert(nextSibling->values.begin(), value);
+          this->parent->values[middleIndex] = value;
+        } else {
+          nextSibling->values.insert(nextSibling->values.begin(), this->values[this->values.size() - 1]);
+          this->parent->values[middleIndex] = this->values[this->values.size() - 1];
+          this->values.pop_back();
+          this->values.insert(this->values.begin() + insertIndex, value);
+        }
+    
+        return std::make_pair(Optional<T>(), nullptr);
+      }
     }
   }
 
@@ -565,7 +604,8 @@ template <typename T> std::pair<bool, size_t> BTreeNode<T>::validate(bool root, 
 #ifdef VERDANT_FLAG_DEBUG
       std::cout << "[ERROR] BTree failed by having first key of a node less than previous key of its parent node." << std::endl;
       std::cout << "[DEBUG] Current node ID: " << this->index << std::endl;
-      std::cout << "[DEBUG] Parent ID: " << this->parent->index << std::endl;
+      std::cout << "[DEBUG] Current node first value: " << this->values[0] << std::endl;
+      std::cout << "[DEBUG] Compared value : " << *minVal << std::endl;
 #endif
       return { false, SIZE_MAX };
     }
