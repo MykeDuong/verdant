@@ -5,6 +5,6 @@
 
 namespace Utility {
   std::string toLower(const std::string& str);
-  bool createAbsoluteDirectory(const std::string& path);
+  bool createDirectory(const std::string& path);
 }
 

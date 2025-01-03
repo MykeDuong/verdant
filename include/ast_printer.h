@@ -10,7 +10,6 @@ private:
   bool isRoot;
   void printLineStart();
   void visit(const CreateStmt* node);
-  void visit(const ObjectDatabase* node);
 
 public:
   ASTPrinter();

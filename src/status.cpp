@@ -17,6 +17,10 @@ void VerdantStatus::handleError(VerdantStatus::StatusEnum status) {
     statusString = "SUCCESS";
     break;
   }
+  case VerdantStatus::INVALID_PERMISSION: {
+    statusString = "INVALID PERMISSION";
+    break;
+  }
   }
 
   std::cerr << "[ERROR] An unrecoverable error has occurred with error code "

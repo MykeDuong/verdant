@@ -1,13 +1,20 @@
 #pragma once
 
 #include "stmt.h"
-#include "object.h"
-#include <memory>
+#include <string>
+
 
 struct CreateStmt: public Stmt {
-  std::unique_ptr<Object> obj;
+  typedef enum {
+    DATABASE,
+//  TABLE,
+//  INDEX,
+  } CreationType;
+  
+  const CreationType type;
+  const std::string creationName;
+
+  CreateStmt(CreationType type, std::string creationName);
   void accept(Visitor* visitor);
-  CreateStmt(std::unique_ptr<Object> obj);
-  ~CreateStmt();
 };
 

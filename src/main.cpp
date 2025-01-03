@@ -1,4 +1,5 @@
 #include "ast_printer.h"
+#include "interpreter.h"
 #include "optional.h"
 #include "util.h"
 #include "version.h"
@@ -6,13 +7,12 @@
 #include "status.h"
 #include "parser.h"
 #include "parameters.h"
+
 #include <cstdlib>
 #include <iostream>
 #include <string>
 
-size_t BLOCK_SIZE = 8192;
-
-bool loop(Scanner& scanner, Parser& parser, std::string& statement) {
+bool loop(Scanner& scanner, std::string& statement) {
   std::cout << ">> ";
   if (!std::getline(std::cin, statement)) {
     return false;
@@ -23,13 +23,17 @@ bool loop(Scanner& scanner, Parser& parser, std::string& statement) {
   }
 
   std::vector<Token> tokens = scanner.scan(statement).unwrap();
-  Optional<AST> astOrError = parser.parse(tokens);
+  Optional<AST> astOrError = Parser(tokens).parse();
+  if (astOrError.error != 0) {
+    return true;
+  }
   AST ast = astOrError.unwrap();
   
 #ifdef VERDANT_FLAG_DEBUG
   ASTPrinter printer("[DEBUG] ");
   printer.print(ast);
 #endif
+  Interpreter().interpret(std::move(ast));
 
   return true;
 }
@@ -41,16 +45,14 @@ int main() {
 #ifdef VERDANT_FLAG_DEBUG
   std::cout << "[WARNING] Debug mode enabled." << std::endl;
 #endif 
-  std::string dataPath = "/etc/verdant/";
-  if (!Utility::createAbsoluteDirectory(dataPath)) {
-    std::cout << "[ERROR] Cannot create/access data directory at " << dataPath << std::endl;
+  if (!Utility::createDirectory(DATA_PATH)) {
+    std::cout << "[ERROR] Cannot create/access data directory at " << DATA_PATH << std::endl;
     exit(1);
   }
 
   Scanner scanner;
-  Parser parser;
   std::string statement;
 
-  while (loop(scanner, parser, statement)) {}
+  while (loop(scanner, statement)) {}
   return VerdantStatus::SUCCESS;
 }

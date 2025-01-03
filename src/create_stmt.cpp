@@ -4,10 +4,7 @@
 #include <memory>
 #include <utility>
 
-CreateStmt::CreateStmt(std::unique_ptr<Object> obj) : obj(std::move(obj)) {}
-
-CreateStmt::~CreateStmt() {
-  
+CreateStmt::CreateStmt(const CreationType type, const std::string creationName) : type(type), creationName(creationName) {
 }
 
 void CreateStmt::accept(Visitor* visitor) {

@@ -3,6 +3,9 @@
 #include <string>
 #include <sys/stat.h>
 #include <iostream>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <assert.h>
 
 static std::vector<size_t> findAllChar(const std::string& text, char ch) {
   std::vector<size_t> result;
@@ -14,7 +17,6 @@ static std::vector<size_t> findAllChar(const std::string& text, char ch) {
   }
   return result;
 }
-
 namespace Utility {
   std::string toLower(const std::string& str) {
     std::string lowerString;
@@ -24,12 +26,31 @@ namespace Utility {
     }
     return lowerString;
   }
-
-  bool createAbsoluteDirectory(const std::string& absolutePath) {
-    std::string path = absolutePath;
+  std::string expandUser(std::string path) {
+    if (not path.empty() and path[0] == '~') {
+      assert(path.size() == 1 or path[1] == '/');  // or other error handling
+      char const* home = getenv("HOME");
+      if (home or (home = getenv("USERPROFILE"))) {
+        path.replace(0, 1, home);
+      }
+      else {
+        char const *hdrive = getenv("HOMEDRIVE"),
+          *hpath = getenv("HOMEPATH");
+        assert(hdrive);  // or other error handling
+        assert(hpath);
+        path.replace(0, 1, std::string(hdrive) + hpath);
+      }
+    }
+    return path;
+  }
+  bool createDirectory(const std::string& userPath) {
+    std::string path = userPath[0] == '~' ? expandUser(userPath) : userPath;
+    assert(path[0] == '/');
+    
     if (path[path.size() - 1] != '/') {
       path.push_back('/');
     }
+    
     std::vector<size_t> slashes = findAllChar(path, '/');
     int status;
     for (size_t i = 0; i < slashes.size(); i++) {
@@ -41,7 +62,7 @@ namespace Utility {
 #ifdef VERDANT_FLAG_DEBUG
       std::cout << "[DEBUG] Creating path " << curPath << std::endl;
 #endif
-      status = mkdir(curPath.c_str(), 0777);
+      status = mkdir(curPath.c_str(), 0744);
       if ((status < 0) && (errno != EEXIST)) {
         return false;
       }

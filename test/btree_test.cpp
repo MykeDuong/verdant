@@ -1,16 +1,14 @@
 #include "btree.h"
-#include "parameters.h"
 
 #include <climits>
 #include <unordered_map>
 #include <random>
 
-size_t BLOCK_SIZE = 512;
 size_t ITERATION_COUNT = 200000;
 size_t SEARCH_TEST_DURATION = 10000;
 size_t RANGE_TEST_DURATION = 10000;
-size_t DELETION_TEST_DURATION = 10000;
-size_t DELETIONS_PER_ROUND = 9999;
+size_t DELETION_TEST_DURATION = 1000;
+size_t DELETIONS_PER_ROUND = 99;
 typedef long long T;
 
 int main() {

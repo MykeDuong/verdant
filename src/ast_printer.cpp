@@ -1,4 +1,5 @@
 #include "ast_printer.h"
+#include "create_stmt.h"
 #include <iostream>
 
 ASTPrinter::ASTPrinter(): skipSpace(0), lineStart("") {
@@ -26,13 +27,12 @@ void ASTPrinter::print(AST& ast) {
 
 void ASTPrinter::visit(const CreateStmt* node) {
   this->printLineStart();
-  std::cout << "Create" << std::endl;
-  this->isRoot = false;
-  node->obj->accept(this);
-}
+  std::cout << "CREATE ";
+  switch (node->type) {
+    case CreateStmt::DATABASE:
+      std::cout << "{ type = DATABASE }, " << "{ name = " << node->creationName << " }" << std::endl;
 
-void ASTPrinter::visit(const ObjectDatabase* node) {
-  this->printLineStart();
-  std::cout << "Database " << node->identifier << std::endl;
-  this->isRoot = false;
+      break;
+  }
+
 }
