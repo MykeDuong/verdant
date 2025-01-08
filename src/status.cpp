@@ -4,26 +4,30 @@
 #include <iostream>
 #include <string>
 
-// TODO: Better error handling
-void VerdantStatus::handleError(VerdantStatus::StatusEnum status) {
-  std::string statusString;
-
+const std::string VerdantStatus::errorCodeToString(VerdantStatus::StatusEnum status) {
   switch (status) {
-  case VerdantStatus::INTERNAL_ERROR: {
-    statusString = "INTERNAL_ERROR";
-    break;
+  case VerdantStatus::INTERNAL_ERROR:
+    return "INTERNAL_ERROR";
+  case VerdantStatus::TERMINATED:
+    return "TERMINATED";
+  case VerdantStatus::SUCCESS:
+    return "SUCCESS";
+  case VerdantStatus::INVALID_PERMISSION:
+    return "INVALID_PERMISSION";
+  case VerdantStatus::INVALID_SYNTAX:
+    return "INVALID_SYNTAX";
+  case VerdantStatus::UNSPECIFIED_DATABASE:
+    return "UNSPECIFIED_DATABASE";
+  case VerdantStatus::GENERIC_ERROR:
+    return "GENERIC_ERROR";
+  case VerdantStatus::UNIMPLEMENTED:
+    return "UNIMPLEMENTED";
   }
-  case VerdantStatus::SUCCESS: {
-    statusString = "SUCCESS";
-    break;
-  }
-  case VerdantStatus::INVALID_PERMISSION: {
-    statusString = "INVALID PERMISSION";
-    break;
-  }
-  }
+  return "UNKNOWN_ERROR";
+}
 
+void VerdantStatus::handleError(VerdantStatus::StatusEnum status) {
   std::cerr << "[ERROR] An unrecoverable error has occurred with error code "
-            << statusString << "." << std::endl;
+            << VerdantStatus::errorCodeToString(status) << "." << std::endl;
   std::exit(status);
 }

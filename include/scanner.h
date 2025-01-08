@@ -8,7 +8,15 @@
 
 std::ostream& operator<<(std::ostream& os, const Token& obj);
 
-struct Scanner {
-  Scanner();
-  Optional<std::vector<Token>> scan(std::string& statement);
+class Scanner {
+private:
+  size_t ptr;
+  size_t line;
+  const std::string& text;
+
+  void skipBlank();
+
+public:
+  Scanner(const std::string& text);
+  Optional<std::vector<Token>> scan();
 };

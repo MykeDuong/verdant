@@ -1,4 +1,5 @@
 #include "util.h"
+#include "parameters.h"
 #include <cctype>
 #include <string>
 #include <sys/stat.h>
@@ -68,5 +69,24 @@ namespace Utility {
       }
     }
     return true;
+  }
+
+  bool isDirectoryExist(const std::string& userPath) {
+    std::string path = userPath[0] == '~' ? expandUser(userPath) : userPath;
+    struct stat sb;
+
+    if (stat(path.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  std::string getDatabasePath(const std::string& database) {
+    std::string userPath = DATA_PATH + database + "/";
+    return userPath[0] == '~' ? expandUser(userPath) : userPath;
+  }
+
+  bool isAlpha(const char c) {
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
   }
 }

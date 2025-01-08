@@ -1,20 +1,22 @@
 #pragma once
 
-#include "stmt.h"
 #include <string>
+#include <memory>
 
+#include "stmt.h"
+#include "verdant_object.h"
 
 struct CreateStmt: public Stmt {
   typedef enum {
     DATABASE,
-//  TABLE,
+    TABLE,
 //  INDEX,
   } CreationType;
-  
-  const CreationType type;
-  const std::string creationName;
 
-  CreateStmt(CreationType type, std::string creationName);
+  const CreationType type;
+  std::unique_ptr<VerdantObject> creation;
+
+  CreateStmt(CreationType type, std::unique_ptr<VerdantObject> creation);
   void accept(Visitor* visitor);
 };
 

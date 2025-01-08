@@ -46,7 +46,7 @@ template <typename T> bool BTree<T>::insert(T value) {
     this->root = std::unique_ptr<BTreeNode<T>>(new BTreeNode<T>(this->order));
   }
   std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> result = this->root->insert(value);
-  if (result.first.error != 0) { // Nothing to add
+  if (!result.first.unwrappable()) { // Nothing to add
     return true;
   }
 #ifdef VERDANT_FLAG_DEBUG
@@ -80,7 +80,7 @@ template <typename T> Optional<T> BTree<T>::remove(const T& value) {
   auto result = std::move(nodeOperationResult.first);
   auto optionalRemovedIndex = std::move(nodeOperationResult.second);
 
-  assert(optionalRemovedIndex.error != 0);
+  assert(!optionalRemovedIndex.unwrappable());
 
   if (this->root->values.size() == 0) {
 #ifdef VERDANT_FLAG_DEBUG
@@ -300,7 +300,7 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
   if (!this->isLeaf()) {
     BTreeNode<T>* recursiveChild = this->children[(insertIndex < this->values.size() && this->values[insertIndex] == value) ? insertIndex + 1 : insertIndex].get();
     std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> recursiveResult = recursiveChild->insert(value);
-    if (recursiveResult.first.error != 0) { // Nothing to add/execute. Return
+    if (!recursiveResult.first.unwrappable()) { // Nothing to add/execute. Return
       return recursiveResult;
     }
     value = recursiveResult.first.unwrap();
@@ -328,7 +328,7 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
     if (!this->isLeaf()) {
       // Borrow space from previous sibling
       auto optionalPrevSibling = this->parent->getPrevChild(this);
-      if (optionalPrevSibling.error == 0 && !optionalPrevSibling.unwrap()->isFull()) {
+      if (optionalPrevSibling.unwrappable() && !optionalPrevSibling.unwrap()->isFull()) {
 #ifdef VERDANT_FLAG_DEBUG
         std::cout << "[DEBUG] Borrow from previous sibling" << std::endl;
 #endif
@@ -354,7 +354,7 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
     
       // Borrow space from next sibling 
       auto optionalNextSibling = this->parent->getNextChild(this);
-      if (optionalNextSibling.error == 0 && !optionalNextSibling.unwrap()->isFull()) {
+      if (optionalNextSibling.unwrappable() && !optionalNextSibling.unwrap()->isFull()) {
 #ifdef VERDANT_FLAG_DEBUG
         std::cout << "[DEBUG] Borrow from next sibling" << std::endl;
 #endif
@@ -382,7 +382,7 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
       assert(ptr == nullptr);
       // Borrow space from previous sibling
       auto optionalPrevSibling = this->parent->getPrevChild(this);
-      if (optionalPrevSibling.error == 0 && !optionalPrevSibling.unwrap()->isFull()) {
+      if (optionalPrevSibling.unwrappable() && !optionalPrevSibling.unwrap()->isFull()) {
         auto prevSibling = optionalPrevSibling.unwrap();
         size_t middleIndex = this->parent->findChildIndex(this) - 1;
         assert(!(this->values[0] == this->parent->values[middleIndex]) || !(insertIndex == 0));
@@ -400,7 +400,7 @@ template <typename T> std::pair<Optional<T>, std::unique_ptr<BTreeNode<T>>> BTre
     
       // Borrow space from next sibling 
       auto optionalNextSibling = this->parent->getNextChild(this);
-      if (optionalNextSibling.error == 0 && !optionalNextSibling.unwrap()->isFull()) {
+      if (optionalNextSibling.unwrappable() && !optionalNextSibling.unwrap()->isFull()) {
         auto nextSibling = optionalNextSibling.unwrap();
         size_t middleIndex = this->parent->findChildIndex(this);
         if (insertIndex == this->values.size()) {
@@ -580,7 +580,7 @@ template <typename T> std::pair<Optional<T>, Optional<size_t>> BTreeNode<T>::rem
   auto optionalPrevSibling = this->parent->getPrevChild(this);
   auto optionalNextSibling = this->parent->getNextChild(this);
 
-  if (optionalPrevSibling.error == 0 && !optionalPrevSibling.unwrap()->isLeast()) {
+  if (optionalPrevSibling.unwrappable() && !optionalPrevSibling.unwrap()->isLeast()) {
     size_t middleIndex = this->parent->findChildIndex(this) - 1;
     auto prevSibling = optionalPrevSibling.unwrap();
     T value = prevSibling->values[prevSibling->values.size() - 1];
@@ -589,7 +589,7 @@ template <typename T> std::pair<Optional<T>, Optional<size_t>> BTreeNode<T>::rem
     this->values.insert(this->values.begin(), value);
     return std::make_pair(result, Optional<size_t>());
   }
-  if (optionalNextSibling.error == 0 && !optionalNextSibling.unwrap()->isLeast()) {
+  if (optionalNextSibling.unwrappable() && !optionalNextSibling.unwrap()->isLeast()) {
     size_t middleIndex = this->parent->findChildIndex(this);
     auto nextSibling = optionalNextSibling.unwrap();
     T value = nextSibling->values[0];
@@ -599,14 +599,14 @@ template <typename T> std::pair<Optional<T>, Optional<size_t>> BTreeNode<T>::rem
     return std::make_pair(result, Optional<size_t>());
   }
 
-  if (optionalPrevSibling.error == 0) {
+  if (optionalPrevSibling.unwrappable()) {
     size_t middleIndex = this->parent->findChildIndex(this) - 1;
     auto prevSibling = optionalPrevSibling.unwrap();
     BTreeNode<T>::mergeLeafNodes(prevSibling, this);
     return std::make_pair(result, middleIndex);
   }
 
-  if (optionalNextSibling.error == 0) {
+  if (optionalNextSibling.unwrappable()) {
     size_t middleIndex = this->parent->findChildIndex(this);
     auto nextSibling = optionalNextSibling.unwrap();
     BTreeNode<T>::mergeLeafNodes(this, nextSibling);
@@ -625,7 +625,7 @@ template <typename T> std::pair<Optional<T>, Optional<size_t>> BTreeNode<T>::rem
   auto recursiveResult = this->children[childIndex]->remove(value);
   auto result = std::move(recursiveResult.first);
   auto optionalRemovedIndex = std::move(recursiveResult.second);
-  if (optionalRemovedIndex.error != 0) {
+  if (!optionalRemovedIndex.unwrappable()) {
     return recursiveResult;
   }
 
@@ -645,7 +645,7 @@ template <typename T> std::pair<Optional<T>, Optional<size_t>> BTreeNode<T>::rem
   auto optionalPrevSibling = this->parent->getPrevChild(this);
   auto optionalNextSibling = this->parent->getNextChild(this);
 
-  if (optionalPrevSibling.error == 0 && !optionalPrevSibling.unwrap()->isLeast()) {
+  if (optionalPrevSibling.unwrappable() && !optionalPrevSibling.unwrap()->isLeast()) {
     size_t middleIndex = this->parent->findChildIndex(this) - 1;
     auto prevSibling = optionalPrevSibling.unwrap();
     this->values.insert(this->values.begin(), this->parent->values[middleIndex]);
@@ -656,7 +656,7 @@ template <typename T> std::pair<Optional<T>, Optional<size_t>> BTreeNode<T>::rem
     prevSibling->children.pop_back();
     return std::make_pair(std::move(result), Optional<size_t>());
   }
-  if (optionalNextSibling.error == 0 && !optionalNextSibling.unwrap()->isLeast()) {
+  if (optionalNextSibling.unwrappable() && !optionalNextSibling.unwrap()->isLeast()) {
     size_t middleIndex = this->parent->findChildIndex(this);
     auto nextSibling = optionalNextSibling.unwrap();
     this->values.push_back(this->parent->values[middleIndex]);
@@ -669,14 +669,14 @@ template <typename T> std::pair<Optional<T>, Optional<size_t>> BTreeNode<T>::rem
   }
 
   // Merging
-  if (optionalPrevSibling.error == 0) {
+  if (optionalPrevSibling.unwrappable()) {
     size_t middleIndex = this->parent->findChildIndex(this) - 1;
     auto prevSibling = optionalPrevSibling.unwrap();
     mergeInternalNodes(prevSibling, this->parent->values[middleIndex], this);
     return std::make_pair(std::move(result), middleIndex);
   }
 
-  if (optionalNextSibling.error == 0) {
+  if (optionalNextSibling.unwrappable()) {
     size_t middleIndex = this->parent->findChildIndex(this);
     auto nextSibling = optionalNextSibling.unwrap();
     mergeInternalNodes(this, this->parent->values[middleIndex], nextSibling);

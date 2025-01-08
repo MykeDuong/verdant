@@ -1,39 +1,61 @@
 #include "ast_printer.h"
-#include "interpreter.h"
+#include "cmd_interpreter.h"
+#include "sql_interpreter.h"
 #include "optional.h"
 #include "util.h"
 #include "version.h"
 #include "scanner.h"
 #include "status.h"
-#include "parser.h"
+#include "sql_parser.h"
 #include "parameters.h"
+#include "context.h"
 
 #include <cstdlib>
 #include <iostream>
 #include <string>
 
-bool loop(Scanner& scanner, std::string& statement) {
-  std::cout << ">> ";
+bool loop(Context& context) {
+  std::string statement;
+  std::cout << (context.database.unwrappable() ? context.database.peek() + " " : "") << ">> ";
   if (!std::getline(std::cin, statement)) {
     return false;
   }
 
-  if (statement == "\\q" or statement == "exit") {
+  if (statement == "exit") {
     return false;
   }
 
-  std::vector<Token> tokens = scanner.scan(statement).unwrap();
-  Optional<AST> astOrError = Parser(tokens).parse();
-  if (astOrError.error != 0) {
+  std::vector<Token> tokens = Scanner(statement).scan().unwrap();
+
+#ifdef VERDANT_FLAG_DEBUG
+//for (auto &token: tokens) {
+//  std::cout << token.toString() << std::endl;
+//}
+#endif
+
+  if (tokens.size() == 0) {
     return true;
   }
-  AST ast = astOrError.unwrap();
+
+  if (tokens[0].type == Token::TOKEN_BACK_SLASH) {
+    auto status = CommandInterpreter(context, tokens).interpret();
+    if (status == VerdantStatus::TERMINATED) {
+      return false;
+    }
+    return true;
+  }
+
+  Optional<AST> optionalAst = SQLParser(tokens).parse();
+  if (!optionalAst.unwrappable()) {
+    return true;
+  }
+  AST ast = optionalAst.unwrap();
   
 #ifdef VERDANT_FLAG_DEBUG
   ASTPrinter printer("[DEBUG] ");
   printer.print(ast);
 #endif
-  Interpreter().interpret(std::move(ast));
+  SQLInterpreter(ast, context).interpret();
 
   return true;
 }
@@ -50,9 +72,8 @@ int main() {
     exit(1);
   }
 
-  Scanner scanner;
-  std::string statement;
+  Context context = { Optional<std::string>() };
 
-  while (loop(scanner, statement)) {}
+  while (loop(context)) {}
   return VerdantStatus::SUCCESS;
 }

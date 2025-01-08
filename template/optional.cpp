@@ -5,36 +5,54 @@
 #include <iostream>
 #include <utility>
 
-template <typename T>
-Optional<T>::Optional() {
-  this->error = -1;
+template <typename T> Optional<T>::Optional() {
+  this->status = VerdantStatus::GENERIC_ERROR;
+}
+
+template <typename T> Optional<T>::Optional(VerdantStatus::StatusEnum status) {
+  this->status = status;
 }
 
 template <typename T>
 Optional<T>::Optional(T value) {
   this->value = std::move(value);
-  this->error = 0;
+  this->status = VerdantStatus::SUCCESS;
 }
 
 template <typename T>
 Optional<T>::Optional(Optional&& optional) {
   this->value = std::move(optional.value);
-  this->error = std::move(optional.error);
+  this->status = std::move(optional.status);
+}
+
+template <typename T> bool Optional<T>::unwrappable() {
+  return this->status == VerdantStatus::SUCCESS;
 }
 
 template <typename T>
 void Optional<T>::setValue(T&& value) {
   this->value = std::move(value);
+  this->status = VerdantStatus::SUCCESS;
 }
 
-template <typename T>
-T Optional<T>::unwrap() {
-  if (this->error != 0) {
+template <typename T> T Optional<T>::unwrap() {
+  if (!this->unwrappable()) {
 #ifdef VERDANT_FLAG_DEBUG
-    std::cerr << "[DEBUG] Error trying to unwrap a null optional value with error code " 
-              << this->error << "." << std::endl;
+    std::cerr << "[DEBUG] Error trying to unwrap a null optional value with status code " 
+              << this->status << "." << std::endl;
 #endif
     VerdantStatus::handleError(VerdantStatus::INTERNAL_ERROR);
   }
   return std::move(this->value);
+}
+
+template <typename T> T& Optional<T>::peek() {
+  if (!this->unwrappable()) {
+#ifdef VERDANT_FLAG_DEBUG
+    std::cerr << "[DEBUG] Error trying to unwrap a null optional value with status code " 
+              << this->status << "." << std::endl;
+#endif
+    VerdantStatus::handleError(VerdantStatus::INTERNAL_ERROR);
+  }
+  return this->value;
 }

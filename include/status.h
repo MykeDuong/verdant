@@ -1,16 +1,23 @@
 #pragma once
 
+#include <string>
+
 class VerdantStatus {
 public:
   typedef enum {
     SUCCESS = 0,
-    INTERNAL_ERROR = 1,
-    INVALID_PERMISSION = 2,
+    TERMINATED,
+    INTERNAL_ERROR,
+    INVALID_PERMISSION,
+    INVALID_SYNTAX,
+    UNSPECIFIED_DATABASE,
+    UNIMPLEMENTED,
+    GENERIC_ERROR,
   } StatusEnum;
 
   static void handleError(VerdantStatus::StatusEnum status);
+  static const std::string errorCodeToString(VerdantStatus::StatusEnum status);
 private:
   static VerdantStatus::StatusEnum value;
 };
-
 

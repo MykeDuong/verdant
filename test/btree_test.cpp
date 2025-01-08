@@ -40,7 +40,7 @@ int main() {
     assert(btree.validate());
     if (round % SEARCH_TEST_DURATION == 0) {
       for (auto val: comparativeStructure) {
-        if (btree.search(val.first).error != 0) {
+        if (!btree.search(val.first).unwrappable()) {
           std::cout << "[ERROR] Value " << val.first << " (added in interation " << val.second << ") not found" << std::endl;
           exit(1);
         }
@@ -50,7 +50,7 @@ int main() {
     if (round % RANGE_TEST_DURATION == 0) {
       auto minVal = btree.getMinValue();
       auto maxVal = btree.getMaxValue();
-      if (minVal.error == 0 && maxVal.error == 0) {
+      if (minVal.unwrappable() && maxVal.unwrappable()) {
         auto result = btree.searchRange(btree.getMinValue().unwrap(), btree.getMaxValue().unwrap()).unwrap();
         assert(result.size() == comparativeStructure.size());
         for (size_t i = 0; i < result.size() - 1; i++) {
