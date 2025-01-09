@@ -32,6 +32,7 @@ void SQLInterpreter::visit(const CreateStmt* node) {
         this->status = VerdantStatus::INVALID_PERMISSION;
         return;
       }
+      
       this->status = VerdantStatus::SUCCESS;
       return;
     }

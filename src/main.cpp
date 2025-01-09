@@ -14,19 +14,8 @@
 #include <iostream>
 #include <string>
 
-bool loop(Context& context) {
-  std::string statement;
-  std::cout << (context.database.unwrappable() ? context.database.peek() + " " : "") << ">> ";
-  if (!std::getline(std::cin, statement)) {
-    return false;
-  }
-
-  if (statement == "exit") {
-    return false;
-  }
-
+bool execute(Context& context, std::vector<std::string>& statements, std::string& statement) {
   std::vector<Token> tokens = Scanner(statement).scan().unwrap();
-
 #ifdef VERDANT_FLAG_DEBUG
 //for (auto &token: tokens) {
 //  std::cout << token.toString() << std::endl;
@@ -60,6 +49,23 @@ bool loop(Context& context) {
   return true;
 }
 
+
+bool loop(Context& context, std::vector<std::string>& statements) {
+  std::string statement;
+  std::cout << (context.database.unwrappable() ? context.database.peek() + " " : "") << ">> ";
+  if (!std::getline(std::cin, statement)) {
+    return false;
+  }
+
+  if (statement == "exit") {
+    return false;
+  }
+
+  bool result = execute(context, statements, statement);
+  statements.push_back(std::move(statement));
+  return result;
+}
+
 int main() {
   std::cout << "Verdant" << " Version " << VERDANT_VERSION_MAJOR << "."
             << VERDANT_VERSION_MINOR << std::endl;
@@ -72,8 +78,9 @@ int main() {
     exit(1);
   }
 
+  std::vector<std::string> statements;
   Context context = { Optional<std::string>() };
 
-  while (loop(context)) {}
+  while (loop(context, statements)) {}
   return VerdantStatus::SUCCESS;
 }

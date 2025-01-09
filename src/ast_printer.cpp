@@ -64,15 +64,13 @@ void ASTPrinter::visit(const TableNode* node) {
   this->printLineStart(false);
   std::cout << "TABLE { name: " << node->getName() << " }" << std::endl;
   this->skipSpace += 5;
-  size_t curTime = 0;
-  for (auto it = node->columns.begin(); it != node->columns.end(); it++) {
-    const std::string &name = it->first;
-    const ColumnInfo &column = it->second;
-    this->printLineStart(curTime != node->columns.size() - 1);
-    std::cout << "COLUMN { name: " << name << ", type: " << printColumnType(column)
+  for (size_t i = 0; i < node->columns.size(); i++) {
+    auto &column = node->columns[i];
+    this->printLineStart(i != node->columns.size() - 1);
+    std::cout << "{ name: " << column.name << ", type: " << printColumnType(column)
               << ", primary: " << (column.isPrimary ? "true" : "false") 
               << " }" << std::endl;
-    curTime += 1;
+
   }
   this->skipSpace -= 5;
 }

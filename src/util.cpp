@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include <vector>
+#include <sstream>
 
 static std::vector<size_t> findAllChar(const std::string& text, char ch) {
   std::vector<size_t> result;
@@ -19,6 +21,9 @@ static std::vector<size_t> findAllChar(const std::string& text, char ch) {
   return result;
 }
 namespace Utility {
+  void DeleteByFree::operator()(void* ptr) const {
+    free(ptr);
+  }
   std::string toLower(const std::string& str) {
     std::string lowerString;
 
@@ -88,5 +93,26 @@ namespace Utility {
 
   bool isAlpha(const char c) {
     return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
+  }
+
+  bool isFloat(const std::string& str) {
+    std::istringstream iss(str);
+    float f;
+    iss >> std::noskipws >> f; // noskipws considers leading whitespace invalid
+    // Check the entire string was consumed and if either failbit or badbit is set
+    return iss.eof() && !iss.fail(); 
+  }
+
+  bool isInteger(const std::string& str) {
+    for (size_t i = 0; i < str.size(); i++) {
+      char c = str[i];
+      if (std::isdigit(c)) {
+        continue;
+      }
+      if (c != '-' || i != 0) {
+        return false;
+      }
+    }
+    return true;
   }
 }

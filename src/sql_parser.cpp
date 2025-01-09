@@ -142,8 +142,8 @@ OptionalNode SQLParser::createStmt() {
           isPrimaryKey = true;
           numPrimary++;
         } 
-        ColumnInfo info = { type, length, isPrimaryKey };
-        table->addColumn(name, std::move(info));
+        ColumnInfo info = { name, type, length, isPrimaryKey };
+        table->addColumn(std::move(info));
         if (!this->multiConsume({ Token::TOKEN_RIGHT_PAREN, Token::TOKEN_COMMA}, "Expect ')' or ',' after column declaration").unwrappable()) {
           return OptionalNode(VerdantStatus::INVALID_SYNTAX);
         }

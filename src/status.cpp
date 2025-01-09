@@ -16,6 +16,10 @@ const std::string VerdantStatus::errorCodeToString(VerdantStatus::StatusEnum sta
     return "INVALID_PERMISSION";
   case VerdantStatus::INVALID_SYNTAX:
     return "INVALID_SYNTAX";
+  case VerdantStatus::INVALID_TYPE:
+    return "INVALID_TYPE";
+  case VerdantStatus::OUT_OF_BOUND:
+    return "OUT_OF_BOUND";
   case VerdantStatus::UNSPECIFIED_DATABASE:
     return "UNSPECIFIED_DATABASE";
   case VerdantStatus::GENERIC_ERROR:

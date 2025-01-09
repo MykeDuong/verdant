@@ -11,6 +11,6 @@ void TableNode::accept(Visitor* visitor) {
   visitor->visit(this);
 }
 
-void TableNode::addColumn(const std::string& name, ColumnInfo&& column) {
-  columns[name] = column;
+void TableNode::addColumn(ColumnInfo&& column) {
+  columns.push_back(std::move(column));
 }
