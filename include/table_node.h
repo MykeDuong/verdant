@@ -2,7 +2,6 @@
 
 #include "verdant_object.h"
 #include "column_info.h"
-#include <unordered_map>
 
 class TableNode final: public VerdantObject {
 private:
@@ -10,7 +9,7 @@ private:
 
 public:
   TableNode(const std::string& name);
-  std::unordered_map<std::string, std::pair<size_t, ColumnInfo>> columns;
+  Columns columns;
 
   const std::string& getName() const;
   const VerdantObjectType getType() const;

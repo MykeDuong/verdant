@@ -15,6 +15,7 @@
 #include <string>
 
 bool execute(Context& context, std::vector<std::string>& statements, std::string& statement) {
+  context.statement.setValue(&statement);
   std::vector<Token> tokens = Scanner(statement).scan().unwrap();
 #ifdef VERDANT_FLAG_DEBUG
 //for (auto &token: tokens) {
@@ -79,7 +80,7 @@ int main() {
   }
 
   std::vector<std::string> statements;
-  Context context = { Optional<std::string>() };
+  Context context = { Optional<std::string>(), Optional<std::string*>() };
 
   while (loop(context, statements)) {}
   return VerdantStatus::SUCCESS;

@@ -5,7 +5,8 @@
 #include <string>
 #include <utility>
 
-// UNSAFE!!
+Field::Field(const std::string &name, const std::string& value) : name(name), value(value) {}
+
 const Optional<std::pair<const char *, size_t>>
 Field::serialize(const ColumnInfo &column) {
   if (!match(column)) {

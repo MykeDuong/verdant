@@ -5,4 +5,5 @@
 
 struct Context {
   Optional<std::string> database;
+  Optional<std::string*> statement;
 };

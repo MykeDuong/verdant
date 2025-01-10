@@ -32,15 +32,20 @@ void SQLInterpreter::visit(const TableNode *node) {
     this->status = VerdantStatus::UNSPECIFIED_DATABASE;
     return;
   }
-  std::string path =
-      DATA_PATH + context.database.unwrap() + "/" + node->getName();
-  bool result = Utility::createDirectory(path);
-  if (!result) {
-    std::cerr << "[ERROR] Verdant cannot create directory with path " + path
-              << std::endl;
-    this->status = VerdantStatus::INVALID_PERMISSION;
-    return;
-  }
+  
+  std::unique_ptr<Table> masterTable = Table::getMasterTable(context.database.peek());
+  std::vector<Field> record;
+  record.push_back({"name", node->getName()});
+  record.push_back({"type", std::to_string(VerdantObjectType::TABLE)});
+  record.push_back({"create_statement", *context.statement.peek()});
+  masterTable->addRecord(record);
+  Columns columns = std::move(node->columns);
+
+  Table newTable(&context, node->getName(), std::move(columns));
+
+  masterTable->save();
+  newTable.save();
+
   this->status = VerdantStatus::SUCCESS;
 }
 

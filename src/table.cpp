@@ -10,17 +10,6 @@
 #include <tuple>
 #include <utility>
 
-static bool openFile(std::fstream &file, const std::string &path) {
-  file.open(path, std::ios::in | std::ios::out | std::ios::binary);
-  if (!file.is_open()) {
-    // Create a new file
-    file.open(path, std::ios::out | std::ios::binary);
-    file.close();
-    file.open(path, std::ios::in | std::ios::out | std::ios::binary);
-  }
-  return file.is_open();
-}
-
 static size_t getBlockCount(std::fstream &file) {
   std::streampos currentPosition = file.tellg();
   file.seekg(0, std::ios::end);
@@ -29,12 +18,23 @@ static size_t getBlockCount(std::fstream &file) {
   return static_cast<size_t>(endPosition) / BLOCK_SIZE;
 }
 
+static bool openFile(std::fstream &file, const std::string &path) {
+  file.open(path, std::ios::in | std::ios::out | std::ios::binary);
+  if (!file.is_open()) {
+    // Create a new file
+    file.open(path, std::ios::out | std::ios::binary);
+    file.close();
+    file.open(path, std::ios::in | std::ios::out | std::ios::binary);
+  }
+  return true;
+}
+
 TableBlock::TableBlock(std::fstream &file, size_t index)
     : file(file), index(index) {
   size_t blockCount = getBlockCount(file);
-  if (blockCount > index) {
+  if (index > blockCount) {
 #ifdef VERDANT_FLAG_DEBUG
-    std::cerr << "[ERROR] Trying to create a block out of bound" << std::endl;
+    std::cerr << "[ERROR] Trying to create a block out of bound: " << index << "/" << blockCount << std::endl;
 #endif
     VerdantStatus::handleError(VerdantStatus::INTERNAL_ERROR);
   }
@@ -149,9 +149,20 @@ void TableBlock::save() {
 Table::Table(Context *context, const std::string &name, Columns &&columns)
     : columns(std::move(columns)), context(context) {
   std::string absolutePath =
-      Utility::getDatabasePath(context->database.unwrap()) + name;
-  if (openFile(file, absolutePath)) {
-    std::cerr << "[ERROR] Cannot create the master table" << std::endl;
+      Utility::getDatabasePath(context->database.peek()) + name;
+  if (!openFile(file, absolutePath)) {
+    std::cerr << "[ERROR] Cannot create the table '" << name << "'" << std::endl;
+    VerdantStatus::handleError(VerdantStatus::INVALID_PERMISSION);
+  }
+}
+
+Table::Table(const std::string &database, const std::string &name,
+             Columns &&columns)
+    : columns(columns),
+      context(Optional<Context *>(VerdantStatus::UNSPECIFIED_DATABASE)) {
+  std::string absolutePath = Utility::getDatabasePath(database) + name;
+  if (!openFile(file, absolutePath)) {
+    std::cerr << "[ERROR] Cannot create the table '" << name << "'" << std::endl;
     VerdantStatus::handleError(VerdantStatus::INVALID_PERMISSION);
   }
 }
@@ -160,12 +171,14 @@ std::unique_ptr<Table> Table::createMasterTable(const std::string &database) {
   Columns columns;
   columns["name"] = {0, {ColumnInfo::VARCHAR, MAX_OBJECT_NAME, true}};
   columns["type"] = {1, {ColumnInfo::INT, 0, false}};
+  columns["create_statement"] = {2, {ColumnInfo::VARCHAR, MAX_CREATE_STATEMENT_SIZE, false}};
 
   std::string masterTableName = database + "_verdant_master.vtbl";
   std::unique_ptr<Table> verdantMaster(new Table(database, masterTableName, std::move(columns)));
   std::vector<Field> record;
   record.push_back({"name", masterTableName});
   record.push_back({"type", std::to_string(VerdantObjectType::TABLE)});
+  record.push_back({"create_statement", ""});
   verdantMaster->addRecord(record);
 
   verdantMaster->save();
@@ -176,19 +189,12 @@ std::unique_ptr<Table> Table::getMasterTable(const std::string &database) {
   Columns columns;
   columns["name"] = {0, {ColumnInfo::VARCHAR, MAX_OBJECT_NAME, true}};
   columns["type"] = {1, {ColumnInfo::INT, 0, false}};
+  columns["create_statement"] = {2, { ColumnInfo::VARCHAR, MAX_CREATE_STATEMENT_SIZE, false }};
 
   std::string masterTableName = database + "_verdant_master.vtbl";
   std::unique_ptr<Table> verdantMaster(new Table(database, masterTableName, std::move(columns)));
 
   return verdantMaster;
-}
-
-Table::Table(const std::string &database, const std::string &name,
-             Columns &&columns)
-    : columns(columns),
-      context(Optional<Context *>(VerdantStatus::UNSPECIFIED_DATABASE)) {
-  std::string absolutePath = Utility::getDatabasePath(database) + name;
-  openFile(file, absolutePath);
 }
 
 Table::~Table() { file.close(); }
@@ -254,7 +260,7 @@ OptionalBuffer Table::createBuffer(std::vector<Field> &fields) {
   size_t totalSize = 0;
   for (Field &field : fields) {
     if (columns.find(field.name) == columns.end()) {
-      std::cerr << "[ERROR] Field name not found" << std::endl;
+      std::cerr << "[ERROR] Field name not found: " << field.name << std::endl;
       return OptionalBuffer(VerdantStatus::INVALID_TYPE);
     }
     auto &column = columns[field.name];

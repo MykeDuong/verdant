@@ -59,7 +59,7 @@ VerdantStatus::StatusEnum CommandInterpreter::interpret() {
     }
     std::string databaseIdentifier = optionalDatabaseIdentifier.unwrap()->value;
     if (!Utility::isDirectoryExist(Utility::getDatabasePath(databaseIdentifier))) {
-      std::cerr << "[ERROR] Database not exist, or Verdant does not have permission to access the datbase" << std::endl;
+      std::cerr << "[ERROR] Database not exist, or Verdant does not have permission to access the database" << std::endl;
       return VerdantStatus::INVALID_PERMISSION;
     }
 
