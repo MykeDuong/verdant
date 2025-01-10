@@ -42,14 +42,16 @@ private:
   std::fstream file;
   std::unordered_map<size_t, std::unique_ptr<TableBlock>> loadedBlocks;
   Columns columns;
-  Context &context;
+  Optional<Context *> context;
 
   Optional<TableBlock *> getBlock(size_t index);
   OptionalBuffer createBuffer(std::vector<Field> &fields);
   bool addRecordToField(std::vector<Field> &fields, Location location);
 
 public:
-  Table(Context &context, const std::string &name, Columns &&columns);
+  Table(Context *context, const std::string &name, Columns &&columns);
+  Table(const std::string &database, const std::string &name,
+        Columns &&columns);
   ~Table();
   void save();
   bool addRecord(std::vector<Field> &fields);

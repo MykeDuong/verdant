@@ -9,6 +9,18 @@
 #include <tuple>
 #include <utility>
 
+static void openFile(std::fstream &file, const std::string &path) {
+  std::cout << path << std::endl;
+  file.open(path, std::ios::in | std::ios::out | std::ios::binary);
+  if (!file.is_open()) {
+    // Create a new file
+    file.open(path, std::ios::out | std::ios::binary);
+    file.close();
+    file.open(path, std::ios::in | std::ios::out | std::ios::binary);
+  }
+  std::cout << "File created: " << file.is_open() << std::endl;
+}
+
 static size_t getBlockCount(std::fstream &file) {
   std::streampos currentPosition = file.tellg();
   file.seekg(0, std::ios::end);
@@ -104,17 +116,18 @@ void TableBlock::save() {
   }
 }
 
-Table::Table(Context &context, const std::string &name, Columns &&columns)
+Table::Table(Context *context, const std::string &name, Columns &&columns)
     : columns(std::move(columns)), context(context) {
   std::string absolutePath =
-      Utility::getDatabasePath(context.database.unwrap()) + name + "/";
-  file.open(absolutePath, std::ios::in | std::ios::out | std::ios::binary);
-  if (!file.is_open()) {
-    // Create a new file
-    file.open(absolutePath, std::ios::out | std::ios::binary);
-    file.close();
-    file.open(absolutePath, std::ios::in | std::ios::out | std::ios::binary);
-  }
+      Utility::getDatabasePath(context->database.unwrap()) + name + "/";
+  openFile(file, absolutePath);
+}
+Table::Table(const std::string &database, const std::string &name,
+             Columns &&columns)
+    : columns(columns),
+      context(Optional<Context *>(VerdantStatus::UNSPECIFIED_DATABASE)) {
+  std::string absolutePath = Utility::getDatabasePath(database) + name + "/";
+  openFile(file, absolutePath);
 }
 
 Table::~Table() { file.close(); }
