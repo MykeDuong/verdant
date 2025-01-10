@@ -15,10 +15,10 @@ static void openFile(std::fstream &file, const std::string &path) {
   if (!file.is_open()) {
     // Create a new file
     file.open(path, std::ios::out | std::ios::binary);
+    std::cout << "File created: " << file.is_open() << std::endl;
     file.close();
     file.open(path, std::ios::in | std::ios::out | std::ios::binary);
   }
-  std::cout << "File created: " << file.is_open() << std::endl;
 }
 
 static size_t getBlockCount(std::fstream &file) {
@@ -119,14 +119,15 @@ void TableBlock::save() {
 Table::Table(Context *context, const std::string &name, Columns &&columns)
     : columns(std::move(columns)), context(context) {
   std::string absolutePath =
-      Utility::getDatabasePath(context->database.unwrap()) + name + "/";
+      Utility::getDatabasePath(context->database.unwrap()) + name;
   openFile(file, absolutePath);
 }
+
 Table::Table(const std::string &database, const std::string &name,
              Columns &&columns)
     : columns(columns),
       context(Optional<Context *>(VerdantStatus::UNSPECIFIED_DATABASE)) {
-  std::string absolutePath = Utility::getDatabasePath(database) + name + "/";
+  std::string absolutePath = Utility::getDatabasePath(database) + name;
   openFile(file, absolutePath);
 }
 
