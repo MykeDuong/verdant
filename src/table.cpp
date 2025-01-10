@@ -17,7 +17,8 @@ static size_t getBlockCount(std::fstream &file) {
   return static_cast<size_t>(endPosition) / BLOCK_SIZE;
 }
 
-TableBlock::TableBlock(std::fstream &file, size_t index) : file(file), index(index) {
+TableBlock::TableBlock(std::fstream &file, size_t index)
+    : file(file), index(index) {
   size_t blockCount = getBlockCount(file);
   if (blockCount > index) {
 #ifdef VERDANT_FLAG_DEBUG
@@ -29,7 +30,7 @@ TableBlock::TableBlock(std::fstream &file, size_t index) : file(file), index(ind
     std::memset(&this->block, 0, BLOCK_SIZE);
   }
   file.seekg(index * BLOCK_SIZE);
-  file.read(reinterpret_cast<char*>(&this->block), BLOCK_SIZE);
+  file.read(reinterpret_cast<char *>(&this->block), BLOCK_SIZE);
 }
 
 size_t TableBlock::getNumRecords() {
@@ -40,7 +41,8 @@ size_t TableBlock::getNumRecords() {
 
 size_t TableBlock::getNextAddress() {
   size_t nextAddress;
-  std::memcpy(&nextAddress, &block[BLOCK_SIZE - 2 * sizeof(size_t)], sizeof(size_t));
+  std::memcpy(&nextAddress, &block[BLOCK_SIZE - 2 * sizeof(size_t)],
+              sizeof(size_t));
   return nextAddress;
 }
 
@@ -53,11 +55,12 @@ Optional<size_t> TableBlock::getRecordAddress(size_t index) {
     return getNextAddress();
   }
   size_t address;
-  std::memcpy(&address, &block[BLOCK_SIZE - (2 + index + 1) * sizeof(size_t)], sizeof(size_t));
+  std::memcpy(&address, &block[BLOCK_SIZE - (2 + index + 1) * sizeof(size_t)],
+              sizeof(size_t));
   return address;
 }
 
-bool TableBlock::isEnoughSpace(Buffer& buffer) {
+bool TableBlock::isEnoughSpace(Buffer &buffer) {
   size_t nextAddress = getNextAddress();
   size_t numRecords = getNumRecords();
   size_t startOfRecordPointers = BLOCK_SIZE - (2 + numRecords) * sizeof(size_t);
@@ -67,7 +70,7 @@ bool TableBlock::isEnoughSpace(Buffer& buffer) {
   return true;
 }
 
-bool TableBlock::addRecord(Buffer&& buffer) {
+bool TableBlock::addRecord(Buffer &&buffer) {
   if (!isEnoughSpace(buffer)) {
     return false;
   }
@@ -81,17 +84,18 @@ Optional<BinaryRecord> TableBlock::getRecord(size_t index) {
   if (index >= numRecords) {
     return Optional<BinaryRecord>();
   }
-  const char* record = &block[getRecordAddress(index).unwrap()];
-  size_t size = getRecordAddress(index + 1).unwrap() - getRecordAddress(index).unwrap();
+  const char *record = &block[getRecordAddress(index).unwrap()];
+  size_t size =
+      getRecordAddress(index + 1).unwrap() - getRecordAddress(index).unwrap();
 
   return Optional<BinaryRecord>(std::make_pair(record, size));
 }
 
 void TableBlock::save() {
-  for (auto& change: changes) {
+  for (auto &change : changes) {
     size_t position = change.first;
-    Buffer& buffer = change.second;
-    char* changePtr = buffer.first.get();
+    Buffer &buffer = change.second;
+    char *changePtr = buffer.first.get();
     size_t changeSize = buffer.second;
     std::memcpy(&this->block[position], changePtr, changeSize);
     file.seekg(index * BLOCK_SIZE + position);
@@ -100,8 +104,10 @@ void TableBlock::save() {
   }
 }
 
-Table::Table(Context& context, const std::string& name, Columns&& columns) : columns(std::move(columns)), context(context) {
-  std::string absolutePath = Utility::getDatabasePath(context.database.unwrap()) + name + "/";
+Table::Table(Context &context, const std::string &name, Columns &&columns)
+    : columns(std::move(columns)), context(context) {
+  std::string absolutePath =
+      Utility::getDatabasePath(context.database.unwrap()) + name + "/";
   file.open(absolutePath, std::ios::in | std::ios::out | std::ios::binary);
   if (!file.is_open()) {
     // Create a new file
@@ -111,28 +117,27 @@ Table::Table(Context& context, const std::string& name, Columns&& columns) : col
   }
 }
 
-Table::~Table() {
-  file.close();
-}
+Table::~Table() { file.close(); }
 
 void Table::save() {
-  for (auto& idxAndBlock: loadedBlocks) {
+  for (auto &idxAndBlock : loadedBlocks) {
     idxAndBlock.second->save();
   }
 }
 
-Optional<TableBlock*> Table::getBlock(size_t index) {
+Optional<TableBlock *> Table::getBlock(size_t index) {
   size_t blockCount = getBlockCount(file);
   if (index > blockCount) {
-    return Optional<TableBlock*>(VerdantStatus::OUT_OF_BOUND);
+    return Optional<TableBlock *>(VerdantStatus::OUT_OF_BOUND);
   }
   if (loadedBlocks.find(index) == loadedBlocks.end()) {
-    loadedBlocks[index] = std::unique_ptr<TableBlock>(new TableBlock(file, index));
+    loadedBlocks[index] =
+        std::unique_ptr<TableBlock>(new TableBlock(file, index));
   }
   return loadedBlocks[index].get();
 }
 
-bool Table::addRecord(const std::vector<Field>& fields) {
+bool Table::addRecord(std::vector<Field> &fields) {
   size_t blockCount = getBlockCount(file);
   OptionalBuffer optionalBuffer = createBuffer(fields);
   if (!optionalBuffer.unwrappable()) {
@@ -140,31 +145,30 @@ bool Table::addRecord(const std::vector<Field>& fields) {
   }
   Buffer buffer = optionalBuffer.unwrap();
 
-  TableBlock* lastBlock = getBlock(blockCount - 1).unwrap();
+  TableBlock *lastBlock = getBlock(blockCount - 1).unwrap();
 
   if (lastBlock->isEnoughSpace(buffer)) {
     lastBlock->addRecord(std::move(buffer));
     return true;
   }
 
-  TableBlock* newBlock = getBlock(blockCount).unwrap();
+  TableBlock *newBlock = getBlock(blockCount).unwrap();
 
   newBlock->addRecord(std::move(buffer));
   return true;
 }
 
-bool addRecordToField(const std::vector<Field>& fields, Location location) {
+bool addRecordToField(std::vector<Field> &fields, Location location) {
   return true;
 }
 
-
-OptionalBuffer Table::createBuffer(const std::vector<Field>& fields) {
+OptionalBuffer Table::createBuffer(std::vector<Field> &fields) {
   if (fields.size() != columns.size()) {
     std::cerr << "[ERROR] Invalid number of fields provided" << std::endl;
     return OptionalBuffer(VerdantStatus::INVALID_TYPE);
   }
 
-  std::vector<std::pair<const Field*, const ColumnInfo*>> orderedFields;
+  std::vector<std::pair<const Field *, const ColumnInfo *>> orderedFields;
   orderedFields.resize(fields.size());
 
   std::vector<bool> filled;
@@ -173,12 +177,12 @@ OptionalBuffer Table::createBuffer(const std::vector<Field>& fields) {
     filled[i] = false;
   }
   size_t totalSize = 0;
-  for (const Field &field: fields) {
+  for (const Field &field : fields) {
     if (columns.find(field.name) == columns.end()) {
       std::cerr << "[ERROR] Field name not found" << std::endl;
       return OptionalBuffer(VerdantStatus::INVALID_TYPE);
     }
-    auto& column = columns[field.name];
+    auto &column = columns[field.name];
     size_t index = column.first;
     ColumnInfo &info = column.second;
     if (filled[index] == true) {
@@ -194,11 +198,11 @@ OptionalBuffer Table::createBuffer(const std::vector<Field>& fields) {
     orderedFields[index] = std::make_pair(&field, &info);
   }
 
-  Utility::BufferUniquePtr<char> buffer((char*)malloc(totalSize));
+  Utility::BufferUniquePtr<char> buffer((char *)malloc(totalSize));
   size_t ptr = 0;
-  for (auto &pair: orderedFields) {
-    const Field* field;
-    const ColumnInfo* info;
+  for (auto &pair : orderedFields) {
+    const Field *field;
+    const ColumnInfo *info;
     std::tie(field, info) = pair;
     auto optionalSerialization = field->serialize(*info);
     if (!optionalSerialization.unwrappable()) {
@@ -207,26 +211,27 @@ OptionalBuffer Table::createBuffer(const std::vector<Field>& fields) {
       VerdantStatus::handleError(VerdantStatus::INTERNAL_ERROR);
 #endif
     }
-    const char* serializedValue;
-    size_t valueSize; 
+    const char *serializedValue;
+    size_t valueSize;
     std::tie(serializedValue, valueSize) = optionalSerialization.unwrap();
     size_t fieldSize = info->getSize();
     std::memcpy(&buffer.get()[ptr], &fieldSize, sizeof(size_t));
     ptr += sizeof(size_t);
-    std::memcpy(&buffer.get()[ptr], &info->type, sizeof(ColumnInfo::ColumnType));
+    std::memcpy(&buffer.get()[ptr], &info->type,
+                sizeof(ColumnInfo::ColumnType));
     ptr += sizeof(ColumnInfo::ColumnType);
     switch (info->type) {
-      case ColumnInfo::INT: 
-      case ColumnInfo::FLOAT: 
-        std::memcpy(&buffer.get()[ptr], serializedValue, valueSize);
-        ptr += valueSize;
-        break;
-      case ColumnInfo::VARCHAR: 
-        std::memcpy(&buffer.get()[ptr], &valueSize, sizeof(size_t));
-        ptr += sizeof(size_t);
-        std::memcpy(&buffer.get()[ptr], serializedValue, valueSize);
-        ptr += valueSize;
-        break;
+    case ColumnInfo::INT:
+    case ColumnInfo::FLOAT:
+      std::memcpy(&buffer.get()[ptr], serializedValue, valueSize);
+      ptr += valueSize;
+      break;
+    case ColumnInfo::VARCHAR:
+      std::memcpy(&buffer.get()[ptr], &valueSize, sizeof(size_t));
+      ptr += sizeof(size_t);
+      std::memcpy(&buffer.get()[ptr], serializedValue, valueSize);
+      ptr += valueSize;
+      break;
     }
   }
   return std::make_pair(std::move(buffer), totalSize);
