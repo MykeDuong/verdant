@@ -168,7 +168,7 @@ OptionalBuffer Table::createBuffer(std::vector<Field> &fields) {
     return OptionalBuffer(VerdantStatus::INVALID_TYPE);
   }
 
-  std::vector<std::pair<const Field *, const ColumnInfo *>> orderedFields;
+  std::vector<std::pair<Field *, const ColumnInfo *>> orderedFields;
   orderedFields.resize(fields.size());
 
   std::vector<bool> filled;
@@ -177,7 +177,7 @@ OptionalBuffer Table::createBuffer(std::vector<Field> &fields) {
     filled[i] = false;
   }
   size_t totalSize = 0;
-  for (const Field &field : fields) {
+  for (Field &field : fields) {
     if (columns.find(field.name) == columns.end()) {
       std::cerr << "[ERROR] Field name not found" << std::endl;
       return OptionalBuffer(VerdantStatus::INVALID_TYPE);
@@ -201,7 +201,7 @@ OptionalBuffer Table::createBuffer(std::vector<Field> &fields) {
   Utility::BufferUniquePtr<char> buffer((char *)malloc(totalSize));
   size_t ptr = 0;
   for (auto &pair : orderedFields) {
-    const Field *field;
+    Field *field;
     const ColumnInfo *info;
     std::tie(field, info) = pair;
     auto optionalSerialization = field->serialize(*info);
