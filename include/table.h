@@ -57,6 +57,8 @@ public:
   Table(Context *context, const std::string &name, Columns &&columns);
   Table(const std::string &database, const std::string &name,
         Columns &&columns);
+  static std::unique_ptr<Table> createMasterTable(const std::string &database);
+  static std::unique_ptr<Table> getMasterTable(const std::string &database);
   ~Table();
   void save();
   bool addRecord(std::vector<Field> &fields);

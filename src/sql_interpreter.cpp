@@ -59,18 +59,7 @@ void SQLInterpreter::visit(const DatabaseNode *node) {
     return;
   }
   // Create verdant_master table
-  Columns columns;
-  columns["name"] = {0, {ColumnInfo::VARCHAR, MAX_OBJECT_NAME, true}};
-  columns["type"] = {1, {ColumnInfo::INT, 0, false}};
-
-  std::string masterTableName = node->getName() + "_verdant_master.vtbl";
-  Table verdantMaster(node->getName(), masterTableName, std::move(columns));
-  std::vector<Field> record;
-  record.push_back({"name", masterTableName});
-  record.push_back({"type", std::to_string(VerdantObjectType::TABLE)});
-  verdantMaster.addRecord(record);
-
-  verdantMaster.save();
+  Table::createMasterTable(node->getName());
 
   this->status = VerdantStatus::SUCCESS;
 }

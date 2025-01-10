@@ -3,6 +3,7 @@
 #include "parameters.h"
 #include "status.h"
 #include "util.h"
+#include "verdant_object.h"
 #include <cstring>
 #include <ios>
 #include <iosfwd>
@@ -153,6 +154,33 @@ Table::Table(Context *context, const std::string &name, Columns &&columns)
     std::cerr << "[ERROR] Cannot create the master table" << std::endl;
     VerdantStatus::handleError(VerdantStatus::INVALID_PERMISSION);
   }
+}
+
+std::unique_ptr<Table> Table::createMasterTable(const std::string &database) {
+  Columns columns;
+  columns["name"] = {0, {ColumnInfo::VARCHAR, MAX_OBJECT_NAME, true}};
+  columns["type"] = {1, {ColumnInfo::INT, 0, false}};
+
+  std::string masterTableName = database + "_verdant_master.vtbl";
+  std::unique_ptr<Table> verdantMaster(new Table(database, masterTableName, std::move(columns)));
+  std::vector<Field> record;
+  record.push_back({"name", masterTableName});
+  record.push_back({"type", std::to_string(VerdantObjectType::TABLE)});
+  verdantMaster->addRecord(record);
+
+  verdantMaster->save();
+  return verdantMaster;
+}
+
+std::unique_ptr<Table> Table::getMasterTable(const std::string &database) {
+  Columns columns;
+  columns["name"] = {0, {ColumnInfo::VARCHAR, MAX_OBJECT_NAME, true}};
+  columns["type"] = {1, {ColumnInfo::INT, 0, false}};
+
+  std::string masterTableName = database + "_verdant_master.vtbl";
+  std::unique_ptr<Table> verdantMaster(new Table(database, masterTableName, std::move(columns)));
+
+  return verdantMaster;
 }
 
 Table::Table(const std::string &database, const std::string &name,
