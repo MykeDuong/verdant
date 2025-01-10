@@ -9,16 +9,15 @@
 #include <tuple>
 #include <utility>
 
-static void openFile(std::fstream &file, const std::string &path) {
-  std::cout << path << std::endl;
+static bool openFile(std::fstream &file, const std::string &path) {
   file.open(path, std::ios::in | std::ios::out | std::ios::binary);
   if (!file.is_open()) {
     // Create a new file
     file.open(path, std::ios::out | std::ios::binary);
-    std::cout << "File created: " << file.is_open() << std::endl;
     file.close();
     file.open(path, std::ios::in | std::ios::out | std::ios::binary);
   }
+  return file.is_open();
 }
 
 static size_t getBlockCount(std::fstream &file) {
@@ -40,18 +39,23 @@ TableBlock::TableBlock(std::fstream &file, size_t index)
   }
   if (index == blockCount) {
     std::memset(&this->block, 0, BLOCK_SIZE);
+    recordCount = 0;
+    nextAddress = 0;
+  } else {
+    file.seekg(index * BLOCK_SIZE);
+    file.read(reinterpret_cast<char *>(&this->block), BLOCK_SIZE);
+    recordCount = getRecordCountOnFile();
+    nextAddress = getNextAddressOnFile();
   }
-  file.seekg(index * BLOCK_SIZE);
-  file.read(reinterpret_cast<char *>(&this->block), BLOCK_SIZE);
 }
 
-size_t TableBlock::getNumRecords() {
+size_t TableBlock::getRecordCountOnFile() {
   size_t num;
   std::memcpy(&num, &block[BLOCK_SIZE - sizeof(size_t)], sizeof(size_t));
   return num;
 }
 
-size_t TableBlock::getNextAddress() {
+size_t TableBlock::getNextAddressOnFile() {
   size_t nextAddress;
   std::memcpy(&nextAddress, &block[BLOCK_SIZE - 2 * sizeof(size_t)],
               sizeof(size_t));
@@ -59,12 +63,12 @@ size_t TableBlock::getNextAddress() {
 }
 
 Optional<size_t> TableBlock::getRecordAddress(size_t index) {
-  size_t numRecords = getNumRecords();
+  size_t numRecords = getRecordCountOnFile();
   if (index > numRecords) {
     return Optional<size_t>();
   }
   if (index == numRecords) {
-    return getNextAddress();
+    return getNextAddressOnFile();
   }
   size_t address;
   std::memcpy(&address, &block[BLOCK_SIZE - (2 + index + 1) * sizeof(size_t)],
@@ -73,26 +77,26 @@ Optional<size_t> TableBlock::getRecordAddress(size_t index) {
 }
 
 bool TableBlock::isEnoughSpace(Buffer &buffer) {
-  size_t nextAddress = getNextAddress();
-  size_t numRecords = getNumRecords();
-  size_t startOfRecordPointers = BLOCK_SIZE - (2 + numRecords) * sizeof(size_t);
-  if (startOfRecordPointers - nextAddress < sizeof(size_t) + buffer.second) {
-    return false;
-  }
-  return true;
+  size_t bookkeepLocation = getBookkeepLocation();
+  return bookkeepLocation - nextAddress >= sizeof(size_t) + buffer.second;
 }
 
 bool TableBlock::addRecord(Buffer &&buffer) {
   if (!isEnoughSpace(buffer)) {
     return false;
   }
-  size_t nextAddress = getNextAddress();
-  changes.push_back(std::make_pair(nextAddress, std::move(buffer)));
+  size_t size = buffer.second;
+  changes.push_back(std::make_tuple(recordCount++, nextAddress, std::move(buffer)));
+  nextAddress += size;
   return true;
 }
 
+size_t TableBlock::getBookkeepLocation() {
+  return BLOCK_SIZE - 2 * sizeof(size_t) - recordCount * sizeof(size_t);
+}
+
 Optional<BinaryRecord> TableBlock::getRecord(size_t index) {
-  size_t numRecords = getNumRecords();
+  size_t numRecords = getRecordCountOnFile();
   if (index >= numRecords) {
     return Optional<BinaryRecord>();
   }
@@ -103,24 +107,52 @@ Optional<BinaryRecord> TableBlock::getRecord(size_t index) {
   return Optional<BinaryRecord>(std::make_pair(record, size));
 }
 
+void TableBlock::saveRecordPointer(size_t index, size_t pointer) {
+  std::memcpy(&this->block[BLOCK_SIZE - 2 * sizeof(size_t) - (index + 1) * sizeof(size_t)], reinterpret_cast<char*>(&pointer), sizeof(size_t));
+  file.seekg((index + 1) * BLOCK_SIZE - 2 * sizeof(size_t) - (index + 1) * sizeof(size_t));
+  file.write(reinterpret_cast<char*>(&pointer), sizeof(size_t));
+}
+
 void TableBlock::save() {
+  if (getBlockCount(file) == this->index) {
+    file.seekg(index * BLOCK_SIZE);
+    file.write(this->block, 8192);
+  }
+
   for (auto &change : changes) {
-    size_t position = change.first;
-    Buffer &buffer = change.second;
+    size_t index = std::get<0>(change);
+    size_t position = std::get<1>(change);
+    Buffer &buffer = std::get<2>(change);
     char *changePtr = buffer.first.get();
     size_t changeSize = buffer.second;
     std::memcpy(&this->block[position], changePtr, changeSize);
     file.seekg(index * BLOCK_SIZE + position);
     file.write(changePtr, changeSize);
-    changes.clear();
   }
+  for (auto& change: changes) {
+    this->saveRecordPointer(std::get<0>(change), std::get<1>(change));
+  }
+  changes.clear();
+  // Write recordCount
+  std::memcpy(&this->block[BLOCK_SIZE - sizeof(size_t)], reinterpret_cast<char*>(&recordCount), sizeof(size_t));
+
+  file.seekg((index + 1) * (BLOCK_SIZE) - sizeof(size_t));
+  file.write(reinterpret_cast<char*>(&recordCount), sizeof(size_t));
+
+  // Write next pointer
+  std::memcpy(&this->block[BLOCK_SIZE - 2 * sizeof(size_t)], reinterpret_cast<char*>(&nextAddress), sizeof(size_t));
+  file.seekg((index + 1) * BLOCK_SIZE - 2 * sizeof(size_t));
+  file.write(reinterpret_cast<char*>(&nextAddress), sizeof(size_t));
 }
 
 Table::Table(Context *context, const std::string &name, Columns &&columns)
     : columns(std::move(columns)), context(context) {
   std::string absolutePath =
       Utility::getDatabasePath(context->database.unwrap()) + name;
-  openFile(file, absolutePath);
+  if (openFile(file, absolutePath)) {
+    std::cerr << "[ERROR] Cannot create the master table" << std::endl;
+    VerdantStatus::handleError(VerdantStatus::INVALID_PERMISSION);
+  }
 }
 
 Table::Table(const std::string &database, const std::string &name,
@@ -141,7 +173,7 @@ void Table::save() {
 
 Optional<TableBlock *> Table::getBlock(size_t index) {
   size_t blockCount = getBlockCount(file);
-  if (index > blockCount) {
+  if (index < 0 || index > blockCount) {
     return Optional<TableBlock *>(VerdantStatus::OUT_OF_BOUND);
   }
   if (loadedBlocks.find(index) == loadedBlocks.end()) {
@@ -159,11 +191,12 @@ bool Table::addRecord(std::vector<Field> &fields) {
   }
   Buffer buffer = optionalBuffer.unwrap();
 
-  TableBlock *lastBlock = getBlock(blockCount - 1).unwrap();
-
-  if (lastBlock->isEnoughSpace(buffer)) {
-    lastBlock->addRecord(std::move(buffer));
-    return true;
+  if (blockCount > 0) {
+    TableBlock *lastBlock = getBlock(blockCount - 1).unwrap();
+    if (lastBlock->isEnoughSpace(buffer)) {
+      lastBlock->addRecord(std::move(buffer));
+      return true;
+    }
   }
 
   TableBlock *newBlock = getBlock(blockCount).unwrap();
@@ -173,7 +206,7 @@ bool Table::addRecord(std::vector<Field> &fields) {
 }
 
 bool addRecordToField(std::vector<Field> &fields, Location location) {
-  return true;
+  return false;
 }
 
 OptionalBuffer Table::createBuffer(std::vector<Field> &fields) {

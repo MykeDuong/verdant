@@ -23,17 +23,22 @@ struct TableBlock final : public StorageInterface {
   char block[BLOCK_SIZE];
   std::fstream &file;
   const size_t index;
+  size_t recordCount;
+  size_t nextAddress;
 
   TableBlock(std::fstream &file, size_t index);
-  std::vector<std::pair<size_t, Buffer>> changes;
+  // Index, address, buffer
+  std::vector<std::tuple<size_t, size_t, Buffer>> changes;
 
-  size_t getNumRecords();
-  size_t getNextAddress();
+  size_t getBookkeepLocation();
+  size_t getRecordCountOnFile();
+  size_t getNextAddressOnFile();
   Optional<size_t> getRecordAddress(size_t index);
 
   bool isEnoughSpace(Buffer &buffer);
   bool addRecord(Buffer &&buffer);
   Optional<BinaryRecord> getRecord(size_t index);
+  void saveRecordPointer(size_t index, size_t pointer);
   void save();
 };
 

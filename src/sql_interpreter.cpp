@@ -68,6 +68,7 @@ void SQLInterpreter::visit(const DatabaseNode *node) {
   std::vector<Field> record;
   record.push_back({"name", masterTableName});
   record.push_back({"type", std::to_string(VerdantObjectType::TABLE)});
+  verdantMaster.addRecord(record);
 
   verdantMaster.save();
 
