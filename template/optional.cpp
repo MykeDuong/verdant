@@ -29,8 +29,7 @@ template <typename T> bool Optional<T>::unwrappable() {
   return this->status == VerdantStatus::SUCCESS;
 }
 
-template <typename T>
-void Optional<T>::setValue(T&& value) {
+template <typename T> void Optional<T>::setValue(const T&& value) {
   this->value = std::move(value);
   this->status = VerdantStatus::SUCCESS;
 }

@@ -7,7 +7,8 @@
 struct Field {
   const std::string& name;
   const std::string& value;
+  Utility::BufferUniquePtr<char> buffer = nullptr;
 
-  const Optional<std::pair<const char*, size_t>> serialize(const ColumnInfo& column) const;
+  const Optional<std::pair<const char*, size_t>> serialize(const ColumnInfo& column);
   const bool match(const ColumnInfo& column) const;
 };

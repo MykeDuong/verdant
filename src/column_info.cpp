@@ -1,7 +1,11 @@
 #include "column_info.h"
+#include "status.h"
+
+#include <iostream>
 
 bool ColumnInfo::operator==(const ColumnInfo& rhs) const {
-  return type == rhs.type  
+  return type == rhs.type
+
       && isPrimary == rhs.isPrimary
       && (type == ColumnInfo::VARCHAR ? varcharSize == rhs.varcharSize : true);
 }
@@ -15,6 +19,11 @@ size_t ColumnInfo::getSize() const {
     case ColumnInfo::VARCHAR:
       return sizeof(ColumnInfo::ColumnType) + sizeof(size_t) + varcharSize;
   }
+#ifdef VERDANT_FLAG_DEBUG
+  std::cerr << "[ERROR] Unreachable" << std::endl;
+#endif
+  VerdantStatus::handleError(VerdantStatus::INTERNAL_ERROR);
+  exit(VerdantStatus::INTERNAL_ERROR);
 }
 
 std::string ColumnInfo::toString() {

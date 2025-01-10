@@ -1,6 +1,7 @@
 #pragma once
 
 #include "column_info.h"
+#include "context.h"
 #include "storage_interface.h"
 #include "parameters.h"
 #include "optional.h"
@@ -14,7 +15,7 @@
 #include <memory>
 
 typedef std::pair<const char*, size_t> BinaryRecord;
-typedef std::pair<Utility::bufferUniquePtr<char>, size_t> Buffer;
+typedef std::pair<Utility::BufferUniquePtr<char>, size_t> Buffer;
 typedef Optional<Buffer> OptionalBuffer;
 typedef std::pair<size_t, size_t> Location;
 
@@ -39,17 +40,17 @@ struct TableBlock final: public StorageInterface {
 
 class Table final: public StorageInterface {
 private:
-  size_t numBlocks;
   std::fstream file;
   std::unordered_map<size_t, std::unique_ptr<TableBlock>> loadedBlocks;
-  std::unordered_map<std::string, std::pair<size_t, ColumnInfo>> columns;
+  Columns columns;
+  Context& context;
 
   Optional<TableBlock*> getBlock(size_t index);
   OptionalBuffer createBuffer(const std::vector<Field>& fields);
   bool addRecordToField (const std::vector<Field>& fields, Location location);
 
 public:
-  Table(const std::string& name);
+  Table(Context& context, const std::string& name, Columns&& columns);
   ~Table();
   void save();
   bool addRecord(const std::vector<Field>& fields);

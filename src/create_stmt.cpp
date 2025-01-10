@@ -4,7 +4,7 @@
 #include <memory>
 #include <utility>
 
-CreateStmt::CreateStmt(CreationType type, std::unique_ptr<VerdantObject> creation) : type(type), creation(std::move(creation)) {}
+CreateStmt::CreateStmt(std::unique_ptr<VerdantObject> creation) : creation(std::move(creation)) {}
 
 void CreateStmt::accept(Visitor* visitor) {
   visitor->visit(this);

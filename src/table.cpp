@@ -17,7 +17,6 @@ static size_t getBlockCount(std::fstream &file) {
   return static_cast<size_t>(endPosition) / BLOCK_SIZE;
 }
 
-
 TableBlock::TableBlock(std::fstream &file, size_t index) : file(file), index(index) {
   size_t blockCount = getBlockCount(file);
   if (blockCount > index) {
@@ -101,14 +100,14 @@ void TableBlock::save() {
   }
 }
 
-Table::Table(const std::string& name) {
-  file.open(name, std::ios::in | std::ios::out | std::ios::binary);
-  
+Table::Table(Context& context, const std::string& name, Columns&& columns) : columns(std::move(columns)), context(context) {
+  std::string absolutePath = Utility::getDatabasePath(context.database.unwrap()) + name + "/";
+  file.open(absolutePath, std::ios::in | std::ios::out | std::ios::binary);
   if (!file.is_open()) {
     // Create a new file
-    file.open(name, std::ios::out | std::ios::binary);
+    file.open(absolutePath, std::ios::out | std::ios::binary);
     file.close();
-    file.open(name, std::ios::in | std::ios::out | std::ios::binary);
+    file.open(absolutePath, std::ios::in | std::ios::out | std::ios::binary);
   }
 }
 
@@ -116,8 +115,14 @@ Table::~Table() {
   file.close();
 }
 
+void Table::save() {
+  for (auto& idxAndBlock: loadedBlocks) {
+    idxAndBlock.second->save();
+  }
+}
+
 Optional<TableBlock*> Table::getBlock(size_t index) {
-  size_t blockCount = getBlockCount();
+  size_t blockCount = getBlockCount(file);
   if (index > blockCount) {
     return Optional<TableBlock*>(VerdantStatus::OUT_OF_BOUND);
   }
@@ -128,17 +133,24 @@ Optional<TableBlock*> Table::getBlock(size_t index) {
 }
 
 bool Table::addRecord(const std::vector<Field>& fields) {
-  size_t blockCount = getBlockCount();
+  size_t blockCount = getBlockCount(file);
   OptionalBuffer optionalBuffer = createBuffer(fields);
   if (!optionalBuffer.unwrappable()) {
     return false;
   }
   Buffer buffer = optionalBuffer.unwrap();
-  TableBlock* lastBlock = getBlock(blockCount - 1);
+
+  TableBlock* lastBlock = getBlock(blockCount - 1).unwrap();
+
   if (lastBlock->isEnoughSpace(buffer)) {
     lastBlock->addRecord(std::move(buffer));
+    return true;
   }
 
+  TableBlock* newBlock = getBlock(blockCount).unwrap();
+
+  newBlock->addRecord(std::move(buffer));
+  return true;
 }
 
 bool addRecordToField(const std::vector<Field>& fields, Location location) {
@@ -153,10 +165,10 @@ OptionalBuffer Table::createBuffer(const std::vector<Field>& fields) {
   }
 
   std::vector<std::pair<const Field*, const ColumnInfo*>> orderedFields;
-  orderedFields.reserve(fields.size());
+  orderedFields.resize(fields.size());
 
   std::vector<bool> filled;
-  filled.reserve(fields.size());
+  filled.resize(fields.size());
   for (size_t i = 0; i < filled.size(); i++) {
     filled[i] = false;
   }
@@ -182,7 +194,7 @@ OptionalBuffer Table::createBuffer(const std::vector<Field>& fields) {
     orderedFields[index] = std::make_pair(&field, &info);
   }
 
-  Utility::bufferUniquePtr<char> buffer((char*)malloc(totalSize));
+  Utility::BufferUniquePtr<char> buffer((char*)malloc(totalSize));
   size_t ptr = 0;
   for (auto &pair: orderedFields) {
     const Field* field;

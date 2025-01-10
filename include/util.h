@@ -7,7 +7,7 @@ namespace Utility {
   struct DeleteByFree {
     void operator()(void* ptr) const;
   };
-  template<class T> using bufferUniquePtr = std::unique_ptr<T, DeleteByFree>;
+  template<class T> using BufferUniquePtr = std::unique_ptr<T, DeleteByFree>;
   
   std::string toLower(const std::string& str);
   bool createDirectory(const std::string& path);

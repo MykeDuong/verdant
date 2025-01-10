@@ -7,6 +7,11 @@ const std::string& DatabaseNode::getName() const {
   return this->name;
 }
 
+const VerdantObjectType DatabaseNode::getType() const {
+  return VerdantObjectType::DATABASE;
+}
+
 void DatabaseNode::accept(Visitor* visitor) {
   visitor->visit(this);
 }
+

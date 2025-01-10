@@ -6,7 +6,7 @@
 #include <utility>
 
 // UNSAFE!!
-const Optional<std::pair<const char*, size_t>> Field::serialize(const ColumnInfo& column) const {
+const Optional<std::pair<const char*, size_t>> Field::serialize(const ColumnInfo& column) {
   if (!match(column)) {
     return Optional<std::pair<const char*, size_t>>(VerdantStatus::INVALID_TYPE);
   }
@@ -15,18 +15,27 @@ const Optional<std::pair<const char*, size_t>> Field::serialize(const ColumnInfo
       return std::make_pair(this->value.c_str(), this->value.size());
     }
     case ColumnInfo::INT: {
-      char* buffer = (char*)malloc(sizeof(int));
-      int intVal = std::stoi(value);
-      std::memcpy(&buffer, (char*)&intVal, sizeof(int));
-      return std::make_pair((const char*)buffer, sizeof(int));
+      if (buffer == nullptr) {
+        buffer.reset((char*)malloc(sizeof(int)));
+        int intVal = std::stoi(value);
+        std::memcpy(&buffer, (char*)&intVal, sizeof(int));
+      }
+      return std::make_pair((const char*)buffer.get(), sizeof(int));
     }
     case ColumnInfo::FLOAT: {
-      char* buffer = (char*)malloc(sizeof(float));
-      int floatVal = std::stof(value);
-      std::memcpy(&buffer, (char*)&floatVal, sizeof(float));
-      return std::make_pair((const char*)buffer, sizeof(float));
+      if (buffer == nullptr) {
+        buffer.reset((char*)malloc(sizeof(float)));
+        float floatVal = std::stof(value);
+        std::memcpy(&buffer, (char*)&floatVal, sizeof(float));
+      }
+      return std::make_pair((const char*)buffer.get(), sizeof(float));
     }
   }
+#ifdef VERDANT_FLAG_DEBUG
+  std::cerr << "[ERROR] Unreachable" << std::endl;
+#endif
+  VerdantStatus::handleError(VerdantStatus::INTERNAL_ERROR);
+  exit(VerdantStatus::INTERNAL_ERROR);
 }
 
 const bool Field::match(const ColumnInfo& column) const {

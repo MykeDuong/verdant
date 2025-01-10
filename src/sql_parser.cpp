@@ -81,7 +81,7 @@ OptionalNode SQLParser::createStmt() {
         return OptionalNode(VerdantStatus::INVALID_SYNTAX);
       }
 
-      return std::unique_ptr<ASTNode>(new CreateStmt(CreateStmt::DATABASE, std::unique_ptr<VerdantObject>(new DatabaseNode(eat()->value))));
+      return std::unique_ptr<ASTNode>(new CreateStmt(std::unique_ptr<VerdantObject>(new DatabaseNode(eat()->value))));
     }
     case (Token::TOKEN_TABLE): {
       this->eat(); // TABLE
@@ -94,6 +94,7 @@ OptionalNode SQLParser::createStmt() {
       if (!this->consume(Token::TOKEN_LEFT_PAREN, "Expected '(' after table identifier").unwrappable()) {
         return OptionalNode(VerdantStatus::INVALID_SYNTAX);
       }
+      size_t currentFieldIdx = 0;
       while (this->peek().unwrappable() && this->peek().unwrap()->type != Token::TOKEN_RIGHT_PAREN) {
         auto optionalName = consume(Token::TOKEN_IDENTIFIER, "Expect identifier after '(' or ','");
         if (!optionalName.unwrappable()) {
@@ -142,8 +143,11 @@ OptionalNode SQLParser::createStmt() {
           isPrimaryKey = true;
           numPrimary++;
         } 
-        ColumnInfo info = { name, type, length, isPrimaryKey };
-        table->addColumn(std::move(info));
+        ColumnInfo info = { type, length, isPrimaryKey };
+        bool addResult = table->addColumn(name, currentFieldIdx++, std::move(info));
+        if (!addResult) {
+          return OptionalNode(VerdantStatus::INVALID_SYNTAX);
+        }
         if (!this->multiConsume({ Token::TOKEN_RIGHT_PAREN, Token::TOKEN_COMMA}, "Expect ')' or ',' after column declaration").unwrappable()) {
           return OptionalNode(VerdantStatus::INVALID_SYNTAX);
         }
@@ -153,8 +157,7 @@ OptionalNode SQLParser::createStmt() {
         std::cerr << "[ERROR] Too many primary key columns declared" << std::endl;
         return OptionalNode(VerdantStatus::INVALID_SYNTAX);
       }
-
-      return std::unique_ptr<ASTNode>(new CreateStmt(CreateStmt::TABLE, std::move(table)));
+      return std::unique_ptr<ASTNode>(new CreateStmt(std::move(table)));
     }
     default:
       return this->error("Invalid token " + this->current()->value);

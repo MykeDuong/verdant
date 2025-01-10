@@ -178,8 +178,8 @@ template <typename T> BTreeNode<T>::BTreeNode(size_t order, BTreeNode<T>* parent
   this->index = BTreeNode<T>::nextIndex;
   BTreeNode<T>::nextIndex++;
 #endif
-//  this->children.reserve(2 * this->order + 1);
-//  this->values.reserve(2 * this->order);
+  this->children.reserve(2 * this->order + 1);
+  this->values.reserve(2 * this->order);
 }
 
 template <typename T> size_t BTreeNode<T>::insertIndexSearch(const T& value) {

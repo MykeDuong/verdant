@@ -10,12 +10,12 @@ public:
 
   Optional();
   Optional(VerdantStatus::StatusEnum error);
-  Optional(T value);
+  Optional(const T value);
   Optional(const Optional& op) = delete;
   Optional(Optional&& optional);
 
   bool unwrappable();
-  void setValue(T&& value);
+  void setValue(const T&& value);
   T unwrap();
   T& peek();
 };

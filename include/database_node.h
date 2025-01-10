@@ -9,5 +9,6 @@ private:
 public:
   DatabaseNode(const std::string& name);
   const std::string& getName() const;
+  const VerdantObjectType getType() const;
   void accept(Visitor* visitor);
 };

@@ -1,4 +1,5 @@
 #include "ast_printer.h"
+#include "column_info.h"
 #include "create_stmt.h"
 #include "table_node.h"
 #include <iostream>
@@ -32,14 +33,7 @@ void ASTPrinter::visit(const CreateStmt* node) {
   std::cout << "CREATE\n";
   bool prevIsRoot = isRoot;
   isRoot = false;
-  switch (node->type) {
-    case CreateStmt::DATABASE:
-      node->creation->accept(this);
-      break;
-    case CreateStmt::TABLE:
-      node->creation->accept(this);
-      break;
-  }
+  node->creation->accept(this);
   isRoot = prevIsRoot;
 }
 
@@ -64,14 +58,22 @@ void ASTPrinter::visit(const TableNode* node) {
   this->printLineStart(false);
   std::cout << "TABLE { name: " << node->getName() << " }" << std::endl;
   this->skipSpace += 5;
-  for (size_t i = 0; i < node->columns.size(); i++) {
-    auto &column = node->columns[i];
-    this->printLineStart(i != node->columns.size() - 1);
-    std::cout << "{ name: " << column.name << ", type: " << printColumnType(column)
-              << ", primary: " << (column.isPrimary ? "true" : "false") 
-              << " }" << std::endl;
-
+  std::vector<std::pair<const std::string*, const ColumnInfo*>> orderedColumns;
+  orderedColumns.resize(node->columns.size());
+  for (auto &pair: node->columns) {
+    auto &name = pair.first;
+    size_t index = pair.second.first;
+    auto &column = pair.second.second;
+    orderedColumns[index] = std::make_pair(&name, &column);
   }
+  for (size_t i = 0; i < orderedColumns.size(); i++) {
+    const std::string* name = orderedColumns[i].first;
+    const ColumnInfo* column = orderedColumns[i].second;
+    this->printLineStart(i != node->columns.size() - 1);
+    std::cout << "{ index: " << i << ", name: " << *name << ", type: " << printColumnType(*column)
+              << ", primary: " << (column->isPrimary ? "true" : "false") 
+              << " }" << std::endl;
+   }
   this->skipSpace -= 5;
 }
 
