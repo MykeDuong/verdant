@@ -4,9 +4,11 @@
 #include "status.h"
 #include "util.h"
 #include "verdant_object.h"
+#include <cstdlib>
 #include <cstring>
 #include <ios>
 #include <iosfwd>
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -108,26 +110,35 @@ Optional<BinaryRecord> TableBlock::getRecord(size_t index) {
   return Optional<BinaryRecord>(std::make_pair(record, size));
 }
 
-void TableBlock::saveRecordPointer(size_t index, size_t pointer) {
-  std::memcpy(&this->block[BLOCK_SIZE - 2 * sizeof(size_t) - (index + 1) * sizeof(size_t)], reinterpret_cast<char*>(&pointer), sizeof(size_t));
-  file.seekg((index + 1) * BLOCK_SIZE - 2 * sizeof(size_t) - (index + 1) * sizeof(size_t));
+void TableBlock::saveRecordPointer(size_t changeIndex, size_t pointer) {
+  std::memcpy(&this->block[BLOCK_SIZE - 2 * sizeof(size_t) - (changeIndex + 1) * sizeof(size_t)], reinterpret_cast<char*>(&pointer), sizeof(size_t));
+  file.seekg((this->index + 1) * BLOCK_SIZE - 2 * sizeof(size_t) - (changeIndex + 1) * sizeof(size_t));
   file.write(reinterpret_cast<char*>(&pointer), sizeof(size_t));
 }
 
 void TableBlock::save() {
   if (getBlockCount(file) == this->index) {
-    file.seekg(index * BLOCK_SIZE);
+    file.seekg(this->index * BLOCK_SIZE);
     file.write(this->block, 8192);
+#ifdef VERDANT_FLAG_DEBUG
+    std::cout << "[DEBUG] New block created" << std::endl;
+#endif
   }
 
   for (auto &change : changes) {
-    size_t index = std::get<0>(change);
     size_t position = std::get<1>(change);
     Buffer &buffer = std::get<2>(change);
     char *changePtr = buffer.first.get();
     size_t changeSize = buffer.second;
+#ifdef VERDANT_FLAG_DEBUG
+    std::cout << "Position of change relative to block: " << position << std::endl;
+    std::cout << "Size of change: " << changeSize << std::endl;
+#endif
     std::memcpy(&this->block[position], changePtr, changeSize);
-    file.seekg(index * BLOCK_SIZE + position);
+    file.seekp(this->index * BLOCK_SIZE + position);
+#ifdef VERDANT_FLAG_DEBUG
+    std::cout << "Current position: " << file.tellp() << std::endl;
+#endif
     file.write(changePtr, changeSize);
   }
   for (auto& change: changes) {
@@ -137,12 +148,12 @@ void TableBlock::save() {
   // Write recordCount
   std::memcpy(&this->block[BLOCK_SIZE - sizeof(size_t)], reinterpret_cast<char*>(&recordCount), sizeof(size_t));
 
-  file.seekg((index + 1) * (BLOCK_SIZE) - sizeof(size_t));
+  file.seekp((this->index + 1) * (BLOCK_SIZE) - sizeof(size_t));
   file.write(reinterpret_cast<char*>(&recordCount), sizeof(size_t));
 
   // Write next pointer
   std::memcpy(&this->block[BLOCK_SIZE - 2 * sizeof(size_t)], reinterpret_cast<char*>(&nextAddress), sizeof(size_t));
-  file.seekg((index + 1) * BLOCK_SIZE - 2 * sizeof(size_t));
+  file.seekp((this->index + 1) * BLOCK_SIZE - 2 * sizeof(size_t));
   file.write(reinterpret_cast<char*>(&nextAddress), sizeof(size_t));
 }
 
@@ -178,7 +189,7 @@ std::unique_ptr<Table> Table::createMasterTable(const std::string &database) {
   std::vector<Field> record;
   record.push_back({"name", masterTableName});
   record.push_back({"type", std::to_string(VerdantObjectType::TABLE)});
-  record.push_back({"create_statement", ""});
+  record.push_back({"create_statement", "CREATE TABLE " + masterTableName + " (name VARCHAR(" + std::to_string(MAX_OBJECT_NAME) + "), type INT, create_statement VARCHAR(" + std::to_string(MAX_CREATE_STATEMENT_SIZE) + ");"});
   verdantMaster->addRecord(record);
 
   verdantMaster->save();
@@ -227,8 +238,13 @@ bool Table::addRecord(std::vector<Field> &fields) {
 
   if (blockCount > 0) {
     TableBlock *lastBlock = getBlock(blockCount - 1).unwrap();
+
     if (lastBlock->isEnoughSpace(buffer)) {
       lastBlock->addRecord(std::move(buffer));
+#ifdef VERDANT_FLAG_DEBUG
+      std::cout << "Number of changes: " << lastBlock->changes.size() << std::endl;
+#endif
+      
       return true;
     }
   }
@@ -279,7 +295,7 @@ OptionalBuffer Table::createBuffer(std::vector<Field> &fields) {
     orderedFields[index] = std::make_pair(&field, &info);
   }
 
-  Utility::BufferUniquePtr<char> buffer((char *)malloc(totalSize));
+  Utility::BufferUniquePtr<char> buffer((char *)calloc(totalSize, sizeof(char)));
   size_t ptr = 0;
   for (auto &pair : orderedFields) {
     Field *field;
