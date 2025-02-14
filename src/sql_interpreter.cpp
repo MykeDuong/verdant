@@ -1,10 +1,9 @@
-#include "sql_interpreter.h"
-#include "create_stmt.h"
-#include "database_node.h"
-#include "parameters.h"
-#include "status.h"
-#include "table.h"
-#include "util.h"
+#include "sql_interpreter.hpp"
+#include "create_stmt.hpp"
+#include "database_node.hpp"
+#include "parameters.hpp"
+#include "status.hpp"
+#include "util.hpp"
 
 #include <iostream>
 
@@ -32,21 +31,8 @@ void SQLInterpreter::visit(const TableNode *node) {
     this->status = VerdantStatus::UNSPECIFIED_DATABASE;
     return;
   }
-  
-  std::unique_ptr<Table> masterTable = Table::getMasterTable(context.database.peek());
-  std::vector<Field> record;
-  record.push_back({"name", node->getName()});
-  record.push_back({"type", std::to_string(VerdantObjectType::TABLE)});
-  record.push_back({"create_statement", *context.statement.peek()});
-  masterTable->addRecord(record);
-  Columns columns = std::move(node->columns);
 
-  Table newTable(&context, node->getName(), std::move(columns));
-
-  masterTable->save();
-  newTable.save();
-
-  this->status = VerdantStatus::SUCCESS;
+  this->status = VerdantStatus::UNIMPLEMENTED;
 }
 
 void SQLInterpreter::visit(const DatabaseNode *node) {
@@ -63,8 +49,6 @@ void SQLInterpreter::visit(const DatabaseNode *node) {
     this->status = VerdantStatus::INVALID_PERMISSION;
     return;
   }
-  // Create verdant_master table
-  Table::createMasterTable(node->getName());
 
-  this->status = VerdantStatus::SUCCESS;
+  this->status = VerdantStatus::UNIMPLEMENTED;
 }

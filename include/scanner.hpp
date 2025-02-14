@@ -1,10 +1,10 @@
 #pragma once
 
-#include "token.h"
+#include "token.hpp"
 #include <vector>
 #include <string>
 
-#include "optional.h"
+#include "optional.hpp"
 
 std::ostream& operator<<(std::ostream& os, const Token& obj);
 

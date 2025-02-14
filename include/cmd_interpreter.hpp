@@ -1,9 +1,9 @@
 #pragma once
 
-#include "token.h"
-#include "status.h"
-#include "optional.h"
-#include "context.h"
+#include "token.hpp"
+#include "status.hpp"
+#include "optional.hpp"
+#include "context.hpp"
 #include <vector>
 
 class CommandInterpreter {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "optional.h"
+#include "optional.hpp"
 
 struct Context {
   Optional<std::string> database;

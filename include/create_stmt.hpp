@@ -3,8 +3,8 @@
 #include <string>
 #include <memory>
 
-#include "stmt.h"
-#include "verdant_object.h"
+#include "stmt.hpp"
+#include "verdant_object.hpp"
 
 struct CreateStmt: public Stmt {
   std::unique_ptr<VerdantObject> creation;

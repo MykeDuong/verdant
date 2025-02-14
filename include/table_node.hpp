@@ -1,7 +1,7 @@
 #pragma once
 
-#include "verdant_object.h"
-#include "column_info.h"
+#include "verdant_object.hpp"
+#include "column_info.hpp"
 
 class TableNode final: public VerdantObject {
 private:

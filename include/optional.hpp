@@ -1,6 +1,6 @@
 #pragma once
 
-#include "status.h"
+#include "status.hpp"
 template <typename T> class Optional {
 private:
   T value;

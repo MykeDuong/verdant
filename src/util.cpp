@@ -1,5 +1,5 @@
-#include "util.h"
-#include "parameters.h"
+#include "util.hpp"
+#include "parameters.hpp"
 #include <assert.h>
 #include <cctype>
 #include <iostream>

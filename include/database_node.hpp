@@ -1,6 +1,6 @@
 #pragma once
 
-#include "verdant_object.h"
+#include "verdant_object.hpp"
 
 class DatabaseNode final: public VerdantObject {
 private:

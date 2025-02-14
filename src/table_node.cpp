@@ -1,6 +1,6 @@
-#include "table_node.h"
-#include "verdant_object.h"
-#include "visitor.h"
+#include "table_node.hpp"
+#include "verdant_object.hpp"
+#include "visitor.hpp"
 
 #include <iostream>
 

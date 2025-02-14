@@ -8,10 +8,10 @@
 #include <unordered_set>
 #endif
 
-#include "optional.h"
-#include "parameters.h"
-#include "status.h"
-#include "btree.h"
+#include "optional.hpp"
+#include "parameters.hpp"
+#include "status.hpp"
+#include "btree.hpp"
 
 // BTreeNode size
 // Order = M -> 2M (key) + (2M + 1) (ptr_size) + next_block_ptr_size + used_size = block_size

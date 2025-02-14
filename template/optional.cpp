@@ -1,8 +1,9 @@
 #pragma once
 
-#include "optional.h"
+#include "optional.hpp"
+#include "status.hpp"
+
 #include <iostream>
-#include <status.h>
 #include <utility>
 
 template <typename T> Optional<T>::Optional() {

@@ -1,5 +1,5 @@
-#include "database_node.h"
-#include "visitor.h"
+#include "database_node.hpp"
+#include "visitor.hpp"
 
 DatabaseNode::DatabaseNode(const std::string& name) : name(name) {}
 

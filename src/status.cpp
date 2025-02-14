@@ -1,4 +1,4 @@
-#include "status.h"
+#include "status.hpp"
 
 #include <cstdlib>
 #include <iostream>

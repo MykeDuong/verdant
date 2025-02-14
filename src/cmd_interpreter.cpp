@@ -1,6 +1,6 @@
-#include "cmd_interpreter.h"
-#include "status.h"
-#include "util.h"
+#include "cmd_interpreter.hpp"
+#include "status.hpp"
+#include "util.hpp"
 
 CommandInterpreter::CommandInterpreter(Context& context, const std::vector<Token>& tokens) : context(context), tokens(tokens), ptr(0) {}
 

@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "ast_node.h"
+#include "ast_node.hpp"
 
 typedef enum {
   DATABASE,

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "ast.h"
-#include "database_node.h"
-#include "visitor.h"
+#include "ast.hpp"
+#include "database_node.hpp"
+#include "visitor.hpp"
 
 class ASTPrinter: public Visitor {
 private:

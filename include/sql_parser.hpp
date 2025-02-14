@@ -1,9 +1,9 @@
 #pragma once
 
-#include "ast.h"
-#include "ast_node.h"
-#include "optional.h"
-#include "token.h"
+#include "ast.hpp"
+#include "ast_node.hpp"
+#include "optional.hpp"
+#include "token.hpp"
 #include <memory>
 #include <vector>
 

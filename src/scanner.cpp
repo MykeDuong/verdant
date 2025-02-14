@@ -1,6 +1,6 @@
-#include "scanner.h"
-#include "status.h"
-#include "util.h"
+#include "scanner.hpp"
+#include "status.hpp"
+#include "util.hpp"
 #include <algorithm>
 #include <cctype>
 #include <array>
