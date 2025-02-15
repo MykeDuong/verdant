@@ -84,7 +84,7 @@ bool isDirectoryExist(const std::string &userPath) {
   }
 }
 std::string getDatabasePath(const std::string &database) {
-  std::string userPath = DATA_PATH + database + "/";
+  std::string userPath = Parameter::DATA_PATH + database + "/";
   return userPath[0] == '~' ? expandUser(userPath) : userPath;
 }
 

@@ -36,7 +36,7 @@ void SQLInterpreter::visit(const TableNode *node) {
 }
 
 void SQLInterpreter::visit(const DatabaseNode *node) {
-  std::string path = DATA_PATH + node->getName() + "/";
+  std::string path = Parameter::DATA_PATH + node->getName() + "/";
   if (Utility::isDirectoryExist(path)) {
     std::cerr << "[ERROR] Database already exist" << std::endl;
     this->status = VerdantStatus::INVALID_PERMISSION;

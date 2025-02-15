@@ -9,15 +9,18 @@
 
 class FileOperator {
 private:
+  struct PrivateConstructorStruct {};
   static std::unordered_map<std::string, FileOperator> operatorMapping;
   static std::shared_mutex mappingMutex;
   static void createFileOperator(const std::string &filePath);
+  static FileOperator create(const std::string &filePath);
 
   std::fstream file;
   std::shared_mutex fileMutex;
   FileOperator(const std::string &filePath);
 
 public:
+  FileOperator(PrivateConstructorStruct, const std::string &filePath);
   static FileOperator &getFileOperator(const std::string &filePath);
 
   bool writeNewPage(char *memory);
