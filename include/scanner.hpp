@@ -1,10 +1,9 @@
 #pragma once
 
+#include "absl/status/statusor.h"
 #include "token.hpp"
 #include <vector>
 #include <string>
-
-#include "optional.hpp"
 
 std::ostream& operator<<(std::ostream& os, const Token& obj);
 
@@ -18,5 +17,5 @@ private:
 
 public:
   Scanner(const std::string& text);
-  Optional<std::vector<Token>> scan();
+  absl::StatusOr<std::vector<Token>> scan();
 };

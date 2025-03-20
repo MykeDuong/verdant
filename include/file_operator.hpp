@@ -1,6 +1,8 @@
 #pragma once
 
-#include "optional.hpp"
+#include "absl/status/statusor.h"
+#include "buffer.hpp"
+
 #include <fstream>
 #include <memory>
 #include <shared_mutex>
@@ -18,15 +20,18 @@ private:
   std::fstream file;
   std::shared_mutex fileMutex;
   FileOperator(const std::string &filePath);
+  std::size_t blockCount;
 
 public:
   FileOperator(PrivateConstructorStruct, const std::string &filePath);
+
   static FileOperator &getFileOperator(const std::string &filePath);
 
-  bool writeNewPage(char *memory);
+  absl::StatusOr<std::size_t> writeNewPage(char *memory);
 
-  bool writeSmallChange(size_t pageIndex, size_t position, char *buffer,
-                        size_t bufferSize);
+  bool writeSmallChange(size_t pageIndex, size_t position, Buffer buffer);
 
-  Optional<std::unique_ptr<char[]>> readPage(size_t index);
+  bool deletePage(std::size_t pageIndex);
+
+  absl::StatusOr<std::unique_ptr<char[]>> readPage(size_t index);
 };

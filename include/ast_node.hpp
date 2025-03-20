@@ -2,6 +2,5 @@
 
 struct Visitor;
 struct ASTNode {
-  virtual void accept(Visitor* visitor) = 0;
+  virtual void accept(Visitor &visitor) = 0;
 };
-

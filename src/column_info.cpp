@@ -1,5 +1,6 @@
 #include "column_info.hpp"
-#include "status.hpp"
+#include "absl/status/status.h"
+#include "util.hpp"
 
 #include <iostream>
 
@@ -22,8 +23,7 @@ size_t ColumnInfo::getSize() const {
 #ifdef VERDANT_FLAG_DEBUG
   std::cerr << "[ERROR] Unreachable" << std::endl;
 #endif
-  VerdantStatus::handleError(VerdantStatus::INTERNAL_ERROR);
-  exit(VerdantStatus::INTERNAL_ERROR);
+  exit(Utility::handleFatalStatus(absl::InternalError("Unreachable")));
 }
 
 std::string ColumnInfo::toString() {

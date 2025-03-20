@@ -1,6 +1,7 @@
 #include "file_operator.hpp"
+#include "absl/status/status.h"
 #include "parameters.hpp"
-#include "status.hpp"
+#include "util.hpp"
 
 #include <mutex>
 #include <utility>
@@ -30,14 +31,18 @@ FileOperator::FileOperator(PrivateConstructorStruct,
     : FileOperator::FileOperator(filePath) {}
 
 FileOperator::FileOperator(const std::string &filePath) {
-  file.open(filePath, std::ios::in | std::ios::out | std::ios::binary);
+  const std::string expandedFilePath = Utility::expandUser(filePath);
+  file.open(expandedFilePath, std::ios::in | std::ios::out | std::ios::binary);
+  std::cout << expandedFilePath << std::endl;
 
   if (!file.is_open()) {
     // Create a new file
-    file.open(filePath, std::ios::out | std::ios::binary);
+    file.open(expandedFilePath, std::ios::out | std::ios::binary);
     file.close();
-    file.open(filePath, std::ios::in | std::ios::out | std::ios::binary);
+    file.open(expandedFilePath,
+              std::ios::in | std::ios::out | std::ios::binary);
   }
+  this->blockCount = getBlockCount(this->file);
 }
 
 FileOperator &FileOperator::getFileOperator(const std::string &filePath) {
@@ -48,31 +53,39 @@ FileOperator &FileOperator::getFileOperator(const std::string &filePath) {
     createFileOperator(filePath);
     lock.lock();
   }
+  mappingItr = FileOperator::operatorMapping.find(filePath);
   return mappingItr->second;
 }
 
-bool FileOperator::writeNewPage(char *memory) {
+bool FileOperator::deletePage(std::size_t pageIndex) {
+  file.seekg(pageIndex * Parameter::BLOCK_SIZE);
+  char status = 0;
+  file.write(&status, sizeof(char));
+  return true;
+}
+
+absl::StatusOr<std::size_t> FileOperator::writeNewPage(char *memory) {
   std::unique_lock<std::shared_mutex> lock(this->fileMutex);
-  file.seekg(0, std::ios::end);
+  file.seekp(0, std::ios::end);
   file.write(memory, Parameter::BLOCK_SIZE);
-  return false;
+  return this->blockCount++;
 }
 
 bool FileOperator::writeSmallChange(size_t pageIndex, size_t position,
-                                    char *buffer, size_t bufferSize) {
+                                    Buffer buffer) {
   std::unique_lock<std::shared_mutex> lock(this->fileMutex);
   return false;
 }
 
-Optional<std::unique_ptr<char[]>> FileOperator::readPage(size_t index) {
+absl::StatusOr<std::unique_ptr<char[]>> FileOperator::readPage(size_t index) {
   std::shared_lock<std::shared_mutex> lock(this->fileMutex);
   file.seekg(index * Parameter::BLOCK_SIZE);
   size_t blockCount = getBlockCount(file);
   if (index >= blockCount) {
-    return VerdantStatus::OUT_OF_BOUND;
+    return absl::OutOfRangeError("Block out of range");
   }
-  std::unique_ptr<char[]> buffer((char *)malloc(Parameter::BLOCK_SIZE));
-  file.read(buffer.get(), Parameter::BLOCK_SIZE);
+  std::unique_ptr<char[]> blockData((char *)malloc(Parameter::BLOCK_SIZE));
+  file.read(blockData.get(), Parameter::BLOCK_SIZE);
 
-  return VerdantStatus::UNIMPLEMENTED;
+  return blockData;
 }

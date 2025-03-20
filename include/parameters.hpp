@@ -3,6 +3,6 @@
 #include <cstddef>
 
 struct Parameter {
-  static const std::size_t BLOCK_SIZE;
-  static const char DATA_PATH[];
+  static constexpr std::size_t BLOCK_SIZE = 8192;
+  static constexpr char DATA_PATH[] = "~/.verdant/";
 };

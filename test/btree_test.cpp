@@ -1,8 +1,11 @@
 #include "btree.hpp"
+#include "parameters.hpp"
 
 #include <climits>
 #include <unordered_map>
 #include <random>
+
+#define VERDANT_FLAG_BTREE_TEST
 
 size_t ITERATION_COUNT = 200000;
 size_t SEARCH_TEST_DURATION = 10000;
@@ -12,10 +15,18 @@ size_t DELETIONS_PER_ROUND = 99;
 typedef long long T;
 
 int main() {
+
 #ifdef VERDANT_FLAG_DEBUG
   std::cout << "[DEBUG] Debug enabled" << std::endl;
 #endif
-  BTree<T> btree;
+
+  std::string path = std::string(Parameter::DATA_PATH) + "BTREE_TEST";
+  FileOperator& fileOp = FileOperator::getFileOperator(path);
+  char *data = (char *)(std::calloc(sizeof(char), Parameter::BLOCK_SIZE));
+  absl::StatusOr<std::size_t> position = fileOp.writeNewPage(data);
+  assert(position.value() == 0);
+
+  BTree<T> btree(fileOp, 0);
 
   std::random_device dev;
   std::mt19937 rng(dev());
@@ -29,18 +40,18 @@ int main() {
       for (size_t i = 0; i < DELETIONS_PER_ROUND; i++) {
         auto item = *comparativeStructure.begin();
         comparativeStructure.erase(item.first);
-        btree.remove(item.first);
+        absl::StatusOr<T> removeResult = btree.remove(item.first);
         assert(btree.validate());
       }
     } else {
       T randomValue = uni(rng);
-      btree.insert(randomValue);
+      absl::StatusOr<std::size_t> newRootLocation = btree.insert(randomValue);
       comparativeStructure[randomValue] = round;
     }
     assert(btree.validate());
     if (round % SEARCH_TEST_DURATION == 0) {
       for (auto val: comparativeStructure) {
-        if (!btree.search(val.first).unwrappable()) {
+        if (!btree.search(val.first).ok()) {
           std::cout << "[ERROR] Value " << val.first << " (added in interation " << val.second << ") not found" << std::endl;
           exit(1);
         }
@@ -50,8 +61,8 @@ int main() {
     if (round % RANGE_TEST_DURATION == 0) {
       auto minVal = btree.getMinValue();
       auto maxVal = btree.getMaxValue();
-      if (minVal.unwrappable() && maxVal.unwrappable()) {
-        auto result = btree.searchRange(btree.getMinValue().unwrap(), btree.getMaxValue().unwrap()).unwrap();
+      if (minVal.ok() && maxVal.ok()) {
+        auto result = btree.searchRange(btree.getMinValue().value(), btree.getMaxValue().value()).value();
         assert(result.size() == comparativeStructure.size());
         for (size_t i = 0; i < result.size() - 1; i++) {
           assert(result[i] < result[i + 1]);

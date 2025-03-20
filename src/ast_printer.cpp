@@ -10,6 +10,8 @@ ASTPrinter::ASTPrinter() : skipSpace(0), lineStart("") {}
 ASTPrinter::ASTPrinter(std::string lineStart)
     : skipSpace(0), lineStart(lineStart) {}
 
+ASTPrinter::~ASTPrinter() {}
+
 void ASTPrinter::printLineStart(bool isMiddle) {
   std::cout << this->lineStart;
   for (size_t i = 0; i < this->skipSpace; i++) {
@@ -23,7 +25,7 @@ void ASTPrinter::printLineStart(bool isMiddle) {
 void ASTPrinter::print(AST &ast) {
   for (auto &&node : ast.roots) {
     this->isRoot = true;
-    node->accept(this);
+    node->accept(*this);
   }
 }
 
@@ -32,7 +34,7 @@ void ASTPrinter::visit(const CreateStmt *node) {
   std::cout << "CREATE\n";
   bool prevIsRoot = isRoot;
   isRoot = false;
-  node->creation->accept(this);
+  node->creation->accept(*this);
   isRoot = prevIsRoot;
 }
 

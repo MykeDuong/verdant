@@ -4,21 +4,18 @@
 
 #include <iostream>
 
-TableNode::TableNode(const std::string& name) : name(name) {}
+TableNode::TableNode(const std::string &name) : name(name) {}
 
-const std::string& TableNode::getName() const {
-  return name;
-}
+const std::string &TableNode::getName() const { return name; }
 
 const VerdantObjectType TableNode::getType() const {
   return VerdantObjectType::TABLE;
 }
 
-void TableNode::accept(Visitor* visitor) {
-  visitor->visit(this);
-}
+void TableNode::accept(Visitor &visitor) { visitor.visit(this); }
 
-bool TableNode::addColumn(std::string name, size_t position, ColumnInfo&& column) {
+bool TableNode::addColumn(std::string name, size_t position,
+                          ColumnInfo &&column) {
   if (columns.find(name) != columns.end()) {
     std::cerr << "[ERROR] Duplicate column name" << std::endl;
     return false;

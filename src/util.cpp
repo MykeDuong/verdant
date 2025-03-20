@@ -1,7 +1,10 @@
 #include "util.hpp"
 #include "parameters.hpp"
+#include "absl/log/log.h"
+
 #include <assert.h>
 #include <cctype>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -19,6 +22,7 @@ static std::vector<size_t> findAllChar(const std::string &text, char ch) {
   }
   return result;
 }
+
 namespace Utility {
 void DeleteByFree::operator()(void *ptr) const { free(ptr); }
 
@@ -31,21 +35,23 @@ std::string toLower(const std::string &str) {
   return lowerString;
 }
 
-std::string expandUser(std::string path) {
+std::string expandUser(const std::string &path) {
+  std::string expandedPath(path);
   if (not path.empty() and path[0] == '~') {
     assert(path.size() == 1 or path[1] == '/'); // or other error handling
     char const *home = getenv("HOME");
     if (home or (home = getenv("USERPROFILE"))) {
-      path.replace(0, 1, home);
+      expandedPath.replace(0, 1, home);
     } else {
       char const *hdrive = getenv("HOMEDRIVE"), *hpath = getenv("HOMEPATH");
       assert(hdrive); // or other error handling
       assert(hpath);
-      path.replace(0, 1, std::string(hdrive) + hpath);
+      expandedPath.replace(0, 1, std::string(hdrive) + hpath);
     }
   }
-  return path;
+  return expandedPath;
 }
+
 bool createDirectory(const std::string &userPath) {
   std::string path = userPath[0] == '~' ? expandUser(userPath) : userPath;
   assert(path[0] == '/');
@@ -83,8 +89,15 @@ bool isDirectoryExist(const std::string &userPath) {
     return false;
   }
 }
+
+bool isFileExist(const std::string &userPath) {
+  std::string path = userPath[0] == '~' ? expandUser(userPath) : userPath;
+  std::fstream file(path.c_str());
+  return file.good();
+}
+
 std::string getDatabasePath(const std::string &database) {
-  std::string userPath = Parameter::DATA_PATH + database + "/";
+  std::string userPath = Parameter::DATA_PATH + database;
   return userPath[0] == '~' ? expandUser(userPath) : userPath;
 }
 
@@ -111,5 +124,10 @@ bool isInteger(const std::string &str) {
     }
   }
   return true;
+}
+
+int handleFatalStatus(absl::Status status) {
+  LOG(FATAL) << "Verdant failed with error code " << status.code() << std::endl;
+  return (int)status.code();
 }
 } // namespace Utility

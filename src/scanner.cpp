@@ -1,5 +1,5 @@
 #include "scanner.hpp"
-#include "status.hpp"
+#include "absl/status/status.h"
 #include "util.hpp"
 #include <algorithm>
 #include <cctype>
@@ -12,7 +12,7 @@ std::ostream& operator<<(std::ostream& os, const Token& obj) {
 
 Scanner::Scanner(const std::string& text) : ptr(0), line(1), text(text) {}
 
-Optional<std::vector<Token>> Scanner::scan() {
+absl::StatusOr<std::vector<Token>> Scanner::scan() {
   std::vector<Token> tokens;
 
   while (ptr < text.size()) {
@@ -55,12 +55,12 @@ Optional<std::vector<Token>> Scanner::scan() {
         char cur = text[endPtr];
         if (cur != '.' && !std::isdigit(cur)) {
           std::cerr << "[ERROR] Line " << line << ": unexpected character " << cur << std::endl;
-          return Optional<typeof tokens>(VerdantStatus::INVALID_SYNTAX);
+          return absl::InvalidArgumentError("Invalid syntax");
         }
         if (cur == '.') {
           if (isFloat) {
             std::cerr << "[ERROR] Line " << line << ": unexpected character " << cur << std::endl;
-            return Optional<typeof tokens>(VerdantStatus::INVALID_SYNTAX);
+            return absl::InvalidArgumentError("Invalid syntax");
           }
           isFloat = true;
         }
@@ -99,12 +99,11 @@ Optional<std::vector<Token>> Scanner::scan() {
 
       ptr = endPtr;
     } else {
-      VerdantStatus::handleError(VerdantStatus::UNIMPLEMENTED);
+      return absl::UnimplementedError("Token unimplemented");
     }
   }
 
-  Optional<typeof tokens> returnValue = tokens;
-  return returnValue;
+  return tokens;
 }
 
 void Scanner::skipBlank() {

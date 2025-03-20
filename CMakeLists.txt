@@ -9,6 +9,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CXXFLAGS  "-Wall -Werror -g")
 set(CMAKE_CXX_FLAGS "${CXXFLAGS}")
 
+add_subdirectory(abseil-cpp)
+
 include_directories(include)
 include_directories(template)
 
@@ -22,9 +24,11 @@ add_executable(verdant ${SOURCES} ${MAIN})
 
 target_compile_definitions(verdant PUBLIC VERDANT_FLAG_DEBUG)
 target_include_directories(verdant PUBLIC "${PROJECT_BINARY_DIR}")
+target_link_libraries(verdant absl::status absl::statusor absl::log)
 
 set(BTREE_TEST "test/btree_test.cpp")
 add_executable(btree_test ${SOURCES} ${BTREE_TEST})
 add_test(NAME BtreeTest COMMAND btree_test)
 target_compile_definitions(btree_test PUBLIC VERDANT_FLAG_DEBUG)
 target_include_directories(btree_test PUBLIC "${PROJECT_BINARY_DIR}")
+target_link_libraries(btree_test absl::status absl::statusor absl::log)

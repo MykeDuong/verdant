@@ -1,12 +1,12 @@
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "ast_printer.hpp"
 #include "cmd_interpreter.hpp"
 #include "context.hpp"
-#include "optional.hpp"
 #include "parameters.hpp"
 #include "scanner.hpp"
 #include "sql_interpreter.hpp"
 #include "sql_parser.hpp"
-#include "status.hpp"
 #include "util.hpp"
 #include "version.hpp"
 
@@ -16,8 +16,8 @@
 
 bool execute(Context &context, std::vector<std::string> &statements,
              std::string &statement) {
-  context.statement.setValue(&statement);
-  std::vector<Token> tokens = Scanner(statement).scan().unwrap();
+  context.statement = &statement;
+  std::vector<Token> tokens = std::move(Scanner(statement).scan().value());
 #ifdef VERDANT_FLAG_DEBUG
 // for (auto &token: tokens) {
 //   std::cout << token.toString() << std::endl;
@@ -29,33 +29,33 @@ bool execute(Context &context, std::vector<std::string> &statements,
   }
 
   if (tokens[0].type == Token::TOKEN_BACK_SLASH) {
-    auto status = CommandInterpreter(context, tokens).interpret();
-    if (status == VerdantStatus::TERMINATED) {
+    absl::Status status = CommandInterpreter(context, tokens).interpret();
+    if (absl::IsCancelled(status)) {
       return false;
     }
     return true;
   }
 
-  Optional<AST> optionalAst = SQLParser(tokens).parse();
-  if (!optionalAst.unwrappable()) {
+  absl::StatusOr<AST> optionalAst = SQLParser(tokens).parse();
+  if (!optionalAst.ok()) {
     return true;
   }
-  AST ast = optionalAst.unwrap();
+  AST ast = std::move(optionalAst.value());
 
 #ifdef VERDANT_FLAG_DEBUG
   ASTPrinter printer("[DEBUG] ");
   printer.print(ast);
 #endif
-  SQLInterpreter(ast, context).interpret();
+  absl::Status interpretStatus = SQLInterpreter(ast, context).interpret();
 
   return true;
 }
 
 bool loop(Context &context, std::vector<std::string> &statements) {
   std::string statement;
-  std::cout << (context.database.unwrappable() ? context.database.peek() + " "
-                                               : "")
+  std::cout << (context.database.ok() ? context.database.value() + " " : "")
             << ">> ";
+
   if (!std::getline(std::cin, statement)) {
     return false;
   }
@@ -83,9 +83,10 @@ int main() {
   }
 
   std::vector<std::string> statements;
-  Context context = {Optional<std::string>(), Optional<std::string *>()};
+  Context context = {absl::StatusOr<std::string>(), absl::StatusOr<std::string *>()};
 
   while (loop(context, statements)) {
   }
-  return VerdantStatus::SUCCESS;
+
+  return 0;
 }

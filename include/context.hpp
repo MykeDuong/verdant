@@ -1,9 +1,10 @@
 #pragma once
 
+#include "absl/status/statusor.h"
+
 #include <string>
-#include "optional.hpp"
 
 struct Context {
-  Optional<std::string> database;
-  Optional<std::string*> statement;
+  absl::StatusOr<std::string> database;
+  absl::StatusOr<std::string*> statement;
 };

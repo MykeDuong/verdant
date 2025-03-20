@@ -17,5 +17,6 @@ private:
 public:
   ASTPrinter();
   ASTPrinter(std::string lineStart);
+  ~ASTPrinter();
   void print(AST& ast);
 };
