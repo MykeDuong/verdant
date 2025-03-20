@@ -3,6 +3,7 @@
 #include "parameters.hpp"
 #include "util.hpp"
 
+#include <cstdio>
 #include <mutex>
 #include <utility>
 
@@ -55,6 +56,15 @@ FileOperator &FileOperator::getFileOperator(const std::string &filePath) {
   }
   mappingItr = FileOperator::operatorMapping.find(filePath);
   return mappingItr->second;
+}
+
+absl::Status FileOperator::deleteFile(const std::string &filePath) {
+  const std::string path = Utility::expandUser(filePath);
+  int status = remove(path.c_str());
+  if (status != 0) {
+    return absl::PermissionDeniedError("Cannot delete the specified file");
+  }
+  return absl::OkStatus();
 }
 
 bool FileOperator::deletePage(std::size_t pageIndex) {

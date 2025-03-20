@@ -10,7 +10,10 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+
+#ifdef VERDANT_FLAG_BTREE_TEST
 #include <unordered_set>
+#endif
 
 // B-Tree Node Anatomy
 // ptr -- key -- ptr -- key -- ... -- key -- ptr -- next_block_ptr

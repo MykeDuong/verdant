@@ -27,6 +27,8 @@ public:
 
   static FileOperator &getFileOperator(const std::string &filePath);
 
+  static absl::Status deleteFile(const std::string &filePath);
+
   absl::StatusOr<std::size_t> writeNewPage(char *memory);
 
   bool writeSmallChange(size_t pageIndex, size_t position, Buffer buffer);

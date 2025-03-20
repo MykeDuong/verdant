@@ -12,10 +12,6 @@
 #include "file_operator.hpp"
 #include "parameters.hpp"
 
-// BTreeNode size
-// Order = M -> 2M (key) + (2M + 1) (ptr_size) + next_block_ptr_size + used_size
-// = block_size M = (block_size - 2 * ptr_size - used_size) / (2 * (key +
-// ptr_size)) M = (block_size - 3 * sizeof(size_t)) / (2 * (key + ptr_size))
 
 template <typename T> BTree<T>::BTree(FileOperator& fileOp, std::size_t root) : fileOp(fileOp) {
 #ifdef VERDANT_FLAG_BTREE_TEST
@@ -23,8 +19,11 @@ template <typename T> BTree<T>::BTree(FileOperator& fileOp, std::size_t root) : 
   std::cout << "[DEBUG] Size of block: " << Parameter::BLOCK_SIZE << std::endl;
 #endif
   assert(Parameter::BLOCK_SIZE > 2 * sizeof(size_t));
-  this->order = std::floor((Parameter::BLOCK_SIZE - 3 * sizeof(size_t)) /
-                           (2 * (sizeof(T) + sizeof(size_t))));
+  // M = (BLOCK_SIZE - sizeof(char) - 3 * sizeof(size_t)) / (4 * sizeof(size_t) + 2 * sizeof(key))
+  this->order = std::floor(
+    (Parameter::BLOCK_SIZE - sizeof(char) - 3 * sizeof(std::size_t)) /
+    (4 * sizeof(size_t) + 2 * sizeof(T))
+  );
   assert(this->order > 0);
 #ifdef VERDANT_FLAG_BTREE_TEST
   std::cout << "[DEBUG] B-Tree order: " << this->order << std::endl;

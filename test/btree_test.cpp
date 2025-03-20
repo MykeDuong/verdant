@@ -78,5 +78,11 @@ int main() {
   std::cout << "[DEBUG] Average keys per node: " << btree.getAverageKeyPerNode() << std::endl;
   std::cout << "[DEBUG] Number of nodes: " << btree.countNodes() << std::endl;
 
+  absl::Status deleteFileStatus = FileOperator::deleteFile(path);
+  if (!deleteFileStatus.ok()) {
+    std::cerr << "[ERROR] Cannot delete B-Tree file" << std::endl;
+    return 1;
+  }
+  std::cerr << "[DEBUG] Successfully delete B-Tree file" << std::endl;
   return 0;
 }
